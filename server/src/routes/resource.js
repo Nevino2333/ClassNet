@@ -142,7 +142,7 @@ function isFFmpegAvailable() {
 }
 
 // 转码并返回渐进式 MP4 流
-router.get('/stream', function(req, res) {
+router.get('/stream', async function(req, res) {
   var filePath = req.query.path;
   if (!filePath) {
     return res.status(400).json({ code: 400, message: '文件路径不能为空' });
@@ -168,8 +168,8 @@ router.get('/stream', function(req, res) {
     var result = streamTranscoder.start(fullPath);
     hash = result.hash;
     mp4Path = result.outputPath;
-    // 等待 MP4 有足够数据（至少 256KB，moov atom 已写入）
-    var ready = streamTranscoder.waitForReady(hash, 262144, 60000);
+    // 异步等待 MP4 数据就绪（不阻塞事件循环）
+    var ready = await streamTranscoder.waitForReady(hash, 262144, 120000);
     if (!ready) {
       return res.status(500).json({ code: 500, message: '转码超时，请重试' });
     }

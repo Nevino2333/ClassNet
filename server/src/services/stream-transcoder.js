@@ -218,33 +218,46 @@ function start(filePath) {
 }
 
 // 等待 MP4 文件有足够数据可播放（frag_keyframe+empty_moov 使得文件边写边可读）
-// 返回 true 表示 MP4 文件存在且大小 >= minSize 字节
+// 异步轮询，不阻塞 Node.js 事件循环
 function waitForReady(hash, minSize, waitMs) {
-  var maxWait = waitMs || 30000;
-  var task = _tasks[hash];
+  return new Promise(function(resolve) {
+    var maxWait = waitMs || 30000;
+    var task = _tasks[hash];
+    var startTime = Date.now();
 
-  if (!task) return false;
-  var filePath = task.outputPath;
-  if (!filePath) return false;
+    if (!task) return resolve(false);
+    var filePath = task.outputPath;
+    if (!filePath) return resolve(false);
 
-  var checkReady = function() {
-    if (!fs.existsSync(filePath)) return false;
-    return fs.statSync(filePath).size >= (minSize || 262144);
-  };
-
-  if (checkReady()) return true;
-  if (task._error || task._exitCode !== null) return false;
-
-  var startTime = Date.now();
-  while (Date.now() - startTime < maxWait) {
-    if (task._error || (task._exitCode !== null && task._exitCode !== undefined)) {
-      return checkReady();
+    function checkReady() {
+      if (!fs.existsSync(filePath)) return false;
+      return fs.statSync(filePath).size >= (minSize || 262144);
     }
-    if (checkReady()) return true;
-    var t = Date.now() + 200;
-    while (Date.now() < t) { /* wait */ }
-  }
-  return checkReady();
+
+    function poll() {
+      var elapsed = Date.now() - startTime;
+
+      // 任务失败 → 返回当前状态
+      if (task._error || task._exitCode !== null) {
+        return resolve(checkReady());
+      }
+
+      // 文件就绪 → 返回 true
+      if (checkReady()) return resolve(true);
+
+      // 超时 → 返回当前状态
+      if (elapsed >= maxWait) return resolve(checkReady());
+
+      // 继续轮询
+      setTimeout(poll, 300);
+    }
+
+    // 首次立即检查
+    if (checkReady()) return resolve(true);
+    if (task._error || task._exitCode !== null) return resolve(checkReady());
+
+    setTimeout(poll, 300);
+  });
 }
 
 // 续期访问时间

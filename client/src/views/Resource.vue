@@ -592,7 +592,10 @@ export default {
 
       // MKV → 服务端 ffmpeg 实时转码为分片 MP4
       // 其他格式 → 直链播放
-      var isMkv = self.previewItem && (self.previewItem.extension || '').toLowerCase() === 'mkv';
+      // 同时检查 extension 字段和文件路径（防止 API 返回缺少 extension 字段）
+      var extFromItem = (self.previewItem && self.previewItem.extension || '').toLowerCase();
+      var extFromPath = (self.previewFilePath || '').toLowerCase();
+      var isMkv = extFromItem === 'mkv' || extFromPath.endsWith('.mkv');
       var videoSrc, videoType;
       if (isMkv) {
         videoSrc = '/api/resources/stream?path=' + encodeURIComponent(self.previewFilePath) + '&_t=' + Date.now();
