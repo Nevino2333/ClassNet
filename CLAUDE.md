@@ -79,7 +79,7 @@ git save
 
 # 2. 检查当前状态
 git status
-git history | head -5
+git log | head -5
 ```
 
 ### 修改代码时
@@ -242,7 +242,7 @@ cd server && node src/index.js # 启动服务器
 
 ```bash
 # 查看提交历史
-git history
+git log
 
 # 撤销最近一次 commit（保留文件修改）
 git undo

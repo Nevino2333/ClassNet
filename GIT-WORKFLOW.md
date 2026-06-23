@@ -12,7 +12,7 @@
 | ⏪ 软回滚 | `git undo` | 撤销最近一次 commit，保留文件 |
 | ⏮️ 硬回滚 | `git hard-undo` | 完全丢弃最近一次 commit |
 | 📸 临时快照 | `git snap` | 保存到 stash，不创建 commit |
-| 📋 查看历史 | `git history` | 最近 30 条提交，图形化 |
+| 📋 查看历史 | `git log` | 最近 30 条提交，图形化 |
 | 🩺 代码检查 | `git health` | 手动触发 b→o 损坏检测 |
 | 🔧 修复损坏 | `git fix-b2o` | 自动修复 b→o 字符损坏 |
 
@@ -33,7 +33,7 @@ git commit -m "feat: 做了什么改动"
 # === 遇到问题？ ===
 git diff          # 查看未暂存的修改
 git status        # 查看当前状态
-git history       # 查看最近提交
+git log       # 查看最近提交
 
 # === 搞砸了？ ===
 git undo          # 撤销提交，文件保留
@@ -69,7 +69,7 @@ git undo
 git hard-undo
 
 # 情况3：整个项目想恢复到某个历史版本
-git history                          # 找到目标 commit hash
+git log                          # 找到目标 commit hash
 git reset --hard <commit-hash>       # ⚠️ 会丢弃所有后续修改！
 
 # 情况4：只想恢复某个文件
@@ -180,7 +180,7 @@ Resources/ 由用户手动管理，内容经常变动：
 #   临时保存修改到 stash（无 commit 记录）
 #   恢复: git stash pop
 
-# git history
+# git log
 #   = git log --oneline --graph --decorate -30
 #   图形化显示最近 30 条提交
 
