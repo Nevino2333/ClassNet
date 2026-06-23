@@ -1,0 +1,329 @@
+WebView API 兼容性测试报告
+时间: 2026-05-26T09:26:49.022Z
+
+设备信息:
+- UserAgent: Mozilla/5.0 (Linux; Android 9; CB-C8hPro-STU Build/PPR1.180610.011; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/80.0.3987.132 Safari/537.36
+- Platform: Linux armv8l
+- Screen: 960x600
+- Chrome: 80.0
+
+测试统计:
+- 成功: 241
+- 失败: 0
+- 不支持: 67
+- 部分支持: 4
+- 总计: 312
+
+详细结果:
+[unsupported] navigator.clipboard.writeText(): API不可用
+[unsupported] navigator.clipboard.readText(): API不可用
+[unsupported] navigator.clipboard.write(): API不可用
+[unsupported] navigator.clipboard.read(): API不可用
+[success] document.execCommand("copy"): 复制命令执行成功
+[success] document.execCommand("cut"): 剪切命令执行成功
+[partial] document.execCommand("paste"): paste命令通常需要用户权限且在WebView中受限
+[success] ClipboardEvent复制事件: ClipboardEvent构造器可用
+[success] ClipboardEvent粘贴事件: ClipboardEvent构造器可用
+[unsupported] 剪贴板写入权限: Permissions API不可用
+[unsupported] 剪贴板读取权限: Permissions API不可用
+[success] Selection API复制: Selection API复制成功
+[partial] clipboardData对象: clipboardData仅在剪贴板事件中可用
+[success] localStorage.setItem(): 数据已存储
+[success] localStorage.getItem(): 数据已获取
+[success] localStorage.removeItem(): 数据已删除
+[success] localStorage.clear(): 存储已清空
+[success] localStorage.length: 获取存储数量
+[success] sessionStorage.setItem(): 会话数据已存储
+[success] sessionStorage.getItem(): 会话数据已获取
+[success] indexedDB.open(): 数据库已打开并关闭
+[success] IndexedDB add(): 数据已添加
+[success] IndexedDB get(): 数据已获取
+[success] IndexedDB delete(): 数据已删除
+[success] document.cookie写入: Cookie已写入
+[success] document.cookie读取: Cookie已读取
+[unsupported] caches.open(): Cache API不可用
+[unsupported] cache.add(): Cache API不可用
+[unsupported] cache.match(): Cache API不可用
+[success] storage事件: storage事件监听器可用(仅在其他标签页触发)
+[unsupported] navigator.storage.estimate(): Storage Manager不可用
+[unsupported] navigator.storage.persist(): Storage Manager不可用
+[unsupported] getUserMedia摄像头: getUserMedia不可用
+[unsupported] getUserMedia麦克风: getUserMedia不可用
+[unsupported] getUserMedia摄像头+麦克风: getUserMedia不可用
+[unsupported] enumerateDevices(): enumerateDevices不可用
+[unsupported] getDisplayMedia(): getDisplayMedia不可用
+[success] MediaRecorder: MediaRecorder可用
+[success] MediaRecorder.isTypeSupported(): 格式检测完成
+[unsupported] 摄像头权限查询: Permissions API不可用
+[unsupported] 麦克风权限查询: Permissions API不可用
+[success] MediaStreamTrack.stop(): MediaStreamTrack.stop方法存在
+[success] MediaStreamTrack.getSettings(): MediaStreamTrack.getSettings方法存在
+[success] MediaStreamTrack.applyConstraints(): MediaStreamTrack.applyConstraints方法存在
+[success] AudioContext: AudioContext可用
+[success] fetch()基本: fetch执行成功
+[success] fetch() GET请求: GET请求成功
+[success] fetch() POST请求: POST请求成功
+[success] fetch() JSON解析: JSON解析成功
+[success] fetch()流式读取: 流式API可用
+[success] Headers API: Headers创建成功
+[success] XMLHttpRequest.open(): XHR.open执行成功
+[success] XMLHttpRequest.send(): XHR.send执行成功
+[success] XHR responseType: responseType设置成功
+[success] WebSocket: WebSocket可用
+[success] navigator.onLine: 在线状态检测
+[success] online事件: online事件监听器可用
+[success] offline事件: offline事件监听器可用
+[success] navigator.connection: navigator.connection可用
+[success] connection.type: connection.type检测
+[success] connection.effectiveType: connection.effectiveType检测
+[success] EventSource: EventSource可用
+[success] AbortController: AbortController创建成功
+[success] AbortSignal: AbortSignal可用
+[success] FileReader.readAsText(): 文本读取成功
+[success] FileReader.readAsDataURL(): DataURL读取成功
+[success] FileReader.readAsArrayBuffer(): ArrayBuffer读取成功
+[success] FileReader.readAsBinaryString(): 二进制字符串读取成功
+[success] FileReader onload事件: FileReader onload事件可用
+[unsupported] FileReaderSync: FileReaderSync不可用(仅Worker)
+[success] new Blob(): Blob创建成功
+[success] Blob.text(): Blob.text()执行成功
+[success] Blob.arrayBuffer(): Blob.arrayBuffer()执行成功
+[success] Blob.stream(): Blob.stream()可用
+[success] new File(): File创建成功
+[success] File属性: File属性检测
+[success] FormData.append(): FormData.append执行成功
+[success] FormData.get(): FormData.get执行成功
+[success] <input type="file">: 文件输入元素创建成功
+[success] 拖拽文件: DataTransfer API可用
+[success] URL.createObjectURL(): Object URL创建并释放成功
+[success] URL.revokeObjectURL(): URL.revokeObjectURL可用
+[success] FileList: FileList接口存在
+[success] webkitRelativePath: webkitdirectory属性设置成功
+[partial] getCurrentPosition(): 需要用户授权(点击交互测试按钮)
+[success] watchPosition(): watchPosition方法存在
+[success] clearWatch(): clearWatch方法存在
+[unsupported] 定位权限查询: Permissions API不可用
+[success] Coordinates对象: Coordinates对象结构: latitude, longitude, accuracy
+[success] enableHighAccuracy: enableHighAccuracy选项可用
+[success] timeout选项: timeout选项可用
+[success] maximumAge选项: maximumAge选项可用
+[unsupported] Notification.requestPermission(): Notification不可用
+[unsupported] Notification.permission: Notification不可用
+[unsupported] new Notification(): Notification不可用
+[unsupported] Notification带选项: Notification不可用
+[unsupported] notification.onclick: Notification不可用
+[unsupported] notification.onclose: Notification不可用
+[unsupported] notification.onerror: Notification不可用
+[unsupported] notification.close(): Notification不可用
+[unsupported] 通知权限查询: Permissions API不可用
+[unsupported] PushManager: PushManager不可用
+[unsupported] DeviceOrientationEvent: DeviceOrientationEvent不可用
+[unsupported] DeviceMotionEvent: DeviceMotionEvent不可用
+[unsupported] orientation.alpha: DeviceOrientationEvent不可用
+[unsupported] orientation.beta: DeviceOrientationEvent不可用
+[unsupported] orientation.gamma: DeviceOrientationEvent不可用
+[unsupported] motion.acceleration: DeviceMotionEvent不可用
+[unsupported] motion.accelerationIncludingGravity: DeviceMotionEvent不可用
+[unsupported] motion.rotationRate: DeviceMotionEvent不可用
+[unsupported] AmbientLightSensor: AmbientLightSensor不可用
+[unsupported] Accelerometer: Accelerometer不可用
+[unsupported] Gyroscope: Gyroscope不可用
+[unsupported] Magnetometer: Magnetometer不可用
+[unsupported] LinearAccelerationSensor: LinearAccelerationSensor不可用
+[unsupported] AbsoluteOrientationSensor: AbsoluteOrientationSensor不可用
+[unsupported] RelativeOrientationSensor: RelativeOrientationSensor不可用
+[unsupported] GravitySensor: GravitySensor不可用
+[partial] navigator.getBattery(): 点击交互测试按钮获取电池信息
+[success] battery.level: battery.level属性可用
+[success] battery.charging: battery.charging属性可用
+[success] battery.chargingTime: battery.chargingTime属性可用
+[success] battery.dischargingTime: battery.dischargingTime属性可用
+[success] levelchange事件: levelchange事件可用
+[success] chargingchange事件: chargingchange事件可用
+[success] navigator.vibrate(100): 震动API可用(点击交互测试按钮)
+[success] navigator.vibrate([100,50,100]): 模式震动可用
+[success] navigator.vibrate(0): 停止震动可用
+[success] navigator.vibrate([]): 取消震动可用
+[success] new AudioContext(): AudioContext可用
+[unsupported] webkitAudioContext: webkitAudioContext不可用
+[success] createOscillator(): createOscillator可用
+[success] createGain(): createGain可用
+[success] createBuffer(): createBuffer可用
+[success] createBufferSource(): createBufferSource可用
+[success] createAnalyser(): createAnalyser可用
+[success] createBiquadFilter(): createBiquadFilter可用
+[success] createConvolver(): createConvolver可用
+[success] createDelay(): createDelay可用
+[success] createDynamicsCompressor(): createDynamicsCompressor可用
+[success] createWaveShaper(): createWaveShaper可用
+[unsupported] speechSynthesis: SpeechSynthesis不可用
+[unsupported] speechSynthesis.speak(): SpeechSynthesis不可用
+[unsupported] speechSynthesis.getVoices(): SpeechSynthesis不可用
+[unsupported] SpeechSynthesisUtterance: SpeechSynthesisUtterance不可用
+[success] SpeechRecognition: SpeechRecognition可用
+[success] SpeechRecognition.start(): start方法可用
+[success] HTMLAudioElement: Audio元素创建成功
+[success] new Audio(): Audio构造器可用
+[success] getContext("2d"): 2D上下文获取成功
+[success] getContext("webgl"): WebGL上下文获取成功
+[success] getContext("webgl2"): WebGL2上下文获取成功
+[success] getContext("experimental-webgl"): experimental-webgl获取成功
+[success] canvas.toDataURL(): DataURL生成成功
+[success] canvas.toDataURL("image/png"): PNG DataURL生成成功
+[success] canvas.toDataURL("image/jpeg"): JPEG DataURL生成成功
+[success] canvas.toDataURL("image/webp"): WebP DataURL生成成功
+[success] canvas.toBlob(): Blob生成成功
+[success] canvas.toBlob(callback, "image/png"): PNG Blob生成成功
+[success] canvas.toBlob(callback, "image/jpeg"): JPEG Blob生成成功
+[unsupported] OffscreenCanvas: OffscreenCanvas不可用
+[unsupported] OffscreenCanvas 2D: OffscreenCanvas不可用
+[unsupported] OffscreenCanvas WebGL: OffscreenCanvas不可用
+[unsupported] transferToImageBitmap(): OffscreenCanvas不可用
+[success] createImageBitmap(): ImageBitmap创建成功
+[success] ctx.drawImage(): drawImage执行成功
+[success] ctx.fillText(): fillText执行成功
+[success] ctx.measureText(): measureText执行成功
+[success] ctx.getImageData(): ImageData获取成功
+[success] ctx.putImageData(): ImageData放置成功
+[success] ctx.createImageData(): ImageData创建成功
+[success] ctx.save()/restore(): save/restore执行成功
+[success] ctx.setTransform(): setTransform执行成功
+[success] Path2D: Path2D创建成功
+[success] new Worker(): Worker可用
+[success] worker.postMessage(): postMessage方法可用
+[success] worker.onmessage: onmessage事件可用
+[success] worker.terminate(): terminate方法可用
+[unsupported] SharedWorker: SharedWorker不可用
+[unsupported] navigator.serviceWorker.register(): ServiceWorker不可用
+[unsupported] navigator.serviceWorker.ready: ServiceWorker.ready不可用
+[unsupported] navigator.serviceWorker.controller: ServiceWorker不可用
+[success] Blob URL Worker: Blob Worker创建成功
+[success] Transferable对象: Transferable对象概念存在
+[success] MessageChannel: MessageChannel创建成功
+[success] BroadcastChannel: BroadcastChannel创建成功
+[success] performance.now(): 高精度时间获取
+[success] performance.mark(): 性能标记创建成功
+[success] performance.measure(): 性能测量创建成功
+[success] performance.getEntries(): 条目获取成功
+[success] performance.getEntriesByType(): 按类型获取成功
+[success] performance.getEntriesByName(): 按名称��取成功
+[success] performance.clearMarks(): 标记已清除
+[success] performance.clearMeasures(): 测量已清除
+[success] PerformanceObserver: PerformanceObserver可用
+[success] performance.timing: 导航计时可用
+[success] performance.navigation: 导航信息可用
+[success] performance.memory: 内存信息可用
+[success] performance.timeOrigin: 时间起点可用
+[success] requestIdleCallback(): requestIdleCallback可用
+[success] cancelIdleCallback(): cancelIdleCallback可用
+[success] <a download>属性: download属性设置成功
+[success] <a download> + click(): 下载链接点击成功
+[success] Blob + createObjectURL: Blob URL创建成功
+[success] Blob URL + a.click(): Blob下载执行成功
+[success] DataURL + a.download: DataURL创建成功
+[success] DataURL + a.click(): DataURL下载执行成功
+[success] Canvas toBlob下载: Canvas Blob下载成功
+[success] Canvas toDataURL下载: Canvas DataURL下载成功
+[success] new File()下载: File下载执行成功
+[success] XHR responseType blob: XHR Blob下载成功
+[success] fetch() + blob(): Fetch Blob下载成功
+[success] ReadableStream下载: 流API可用于下载
+[success] 手动FileSaver模式: 手动FileSaver模式执行成功
+[success] iframe下载: iframe下载方法执行成功
+[success] webkitURL.createObjectURL: webkitURL可用
+[success] navigator.userAgent: 用户代理获取成功
+[success] navigator.platform: 平台获取成功
+[success] navigator.language: 语言获取成功
+[success] navigator.languages: 语言数组获取成功
+[success] navigator.hardwareConcurrency: CPU核心数获取成功
+[unsupported] navigator.deviceMemory: deviceMemory不可用
+[success] navigator.maxTouchPoints: 触摸点数获取成功
+[success] screen.width/height: 屏幕尺寸获取成功
+[success] screen.orientation: 屏幕方向获取成功
+[success] document.visibilityState: 页面可见性检测
+[success] requestFullscreen(): 全屏API可用
+[success] document.fullscreenElement: 全屏元素检测
+[success] ResizeObserver: ResizeObserver可用
+[success] IntersectionObserver: IntersectionObserver可用
+[success] MutationObserver: MutationObserver可用
+[success] new URL(): URL API工作正常
+[success] URLSearchParams: URLSearchParams工作正常
+[success] history.pushState(): pushState执行成功
+[success] requestAnimationFrame(): requestAnimationFrame可用
+[success] Promise: Promise可用
+[success] async/await: async/await语法支持
+[success] Map: Map可用
+[success] Set: Set可用
+[success] Symbol: Symbol可用
+[success] Proxy: Proxy可用
+[success] Class语法: Class语法可用
+[success] 箭头函数: 箭头函数可用
+[success] 展开运算符: 展开运算符可用
+[success] 解构赋值: 解构赋值可用
+[success] 模板字符串: 模板字符串可用
+[success] Object.entries(): Object.entries可用
+[success] Array.includes(): Array.includes可用
+[success] String.includes(): String.includes可用
+[success] BigInt: BigInt可用
+[success] globalThis: globalThis可用
+[success] atob/btoa: Base64编码解码可用
+[success] JSON.parse(): JSON.parse可用
+[success] console.log(): console.log可用
+[success] window.crypto: crypto可用
+[unsupported] crypto.randomUUID(): randomUUID不可用
+[success] crypto.getRandomValues(): 随机值生成成功
+[success] TextEncoder: TextEncoder可用
+[success] TextDecoder: TextDecoder可用
+[success] ArrayBuffer: ArrayBuffer可用
+[success] DataView: DataView可用
+[success] Int8Array: Int8Array可用
+[success] Uint8Array: Uint8Array可用
+[success] Float32Array: Float32Array可用
+[success] ReadableStream: ReadableStream可用
+[success] WritableStream: WritableStream可用
+[success] TransformStream: TransformStream可用
+[unsupported] structuredClone(): structuredClone不可用
+[success] queueMicrotask(): queueMicrotask可用
+[success] CustomEvent: CustomEvent可用
+[success] EventTarget: EventTarget可用
+[success] querySelector(): querySelector可用
+[success] createElement(): createElement可用
+[success] classList.add(): classList.add可用
+[success] innerHTML: innerHTML可用
+[success] textContent: textContent可用
+[success] appendChild(): appendChild可用
+[success] removeChild(): removeChild可用
+[success] getBoundingClientRect(): getBoundingClientRect可用
+[success] TouchEvent: TouchEvent可用
+[success] PointerEvent: PointerEvent可用
+[success] MouseEvent: MouseEvent可用
+[success] KeyboardEvent: KeyboardEvent可用
+[success] FocusEvent: FocusEvent可用
+[success] InputEvent: InputEvent可用
+[success] WheelEvent: WheelEvent可用
+[success] DragEvent: DragEvent可用
+[success] ShadowRoot: ShadowRoot可用
+[success] attachShadow(): attachShadow可用
+[success] location.href: location.href可用
+[success] location.origin: location.origin可用
+[success] location.hash: location.hash可用
+[success] location.search: location.search可用
+[success] isSecureContext: isSecureContext检测
+[unsupported] navigator.clipboard: navigator.clipboard不可用
+[unsupported] navigator.mediaDevices: navigator.mediaDevices不可用
+[unsupported] navigator.serviceWorker: navigator.serviceWorker不可用
+[unsupported] navigator.permissions: navigator.permissions不可用
+[success] navigator.geolocation: navigator.geolocation可用
+[success] navigator.connection: navigator.connection可用
+[success] navigator.onLine: navigator.onLine可用
+[success] navigator.cookieEnabled: navigator.cookieEnabled检测
+[success] document.readyState: document.readyState检测
+[success] document.head: document.head可用
+[success] document.body: document.body可用
+[success] document.activeElement: document.activeElement可用
+[success] window.innerWidth/innerHeight: 窗口尺寸检测
+[success] window.scrollX/scrollY: 滚动位置检测
+[success] window.localStorage: localStorage可用
+[success] window.sessionStorage: sessionStorage可用
+[success] window.indexedDB: indexedDB可用
+[unsupported] window.caches: caches不可用

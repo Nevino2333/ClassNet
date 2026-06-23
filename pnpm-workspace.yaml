@@ -1,0 +1,9 @@
+packages:
+  - 'server'
+  - 'client'
+allowBuilds:
+  '@parcel/watcher': set this to true or false
+  better-sqlite3: true
+  core-js: set this to true or false
+  es5-ext: set this to true or false
+  esbuild: set this to true or false

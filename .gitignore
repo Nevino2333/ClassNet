@@ -1,0 +1,87 @@
+node_modules/
+dist/
+
+# 环境变量
+**/.env
+!**/.env.example
+
+# 预注册名单（含真实个人信息）
+server/config/pre-records.json
+
+# 数据库
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite3
+
+# 日志
+*.log
+logs/
+
+# 密钥文件
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# 构建产物
+server/public/assets/
+!server/public/index.html
+
+# Resources 目录（含音乐、视频、启动器等版权/私有内容）
+Resources/
+# 但保留等级图标
+!Resources/public/level/
+
+# Syncthing
+*sync-conflict*
+.stfolder/
+.stignore
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 旧版本/测试
+Server-beta/
+
+# IDE
+.trae/
+.superpowers/
+docs/superpowers/
+
+# 临时文件
+*.pid
+screenshot_*.png
+perf-trace-*.json.gz
+
+# 构建版本信息（构建时自动生成）
+server/version.json
+
+# npm lock（项目使用 pnpm）
+package-lock.json
+
+# HLS 流媒体转码缓存
+server/stream-cache/
+
+# Claude Code
+.claude/plans/
+.claude/worktrees/
+.claude/memory/
+.claude/scheduled_tasks.json
+
+# 运行时数据（可能会被脚本误修改）
+*.bak
+*.orig
+*.before-o2o
+
+# 防止嵌套 git 仓库
+client/.git/
+server/.git/

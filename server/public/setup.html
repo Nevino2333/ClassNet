@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>ClassNet 初始化配置</title>
+<style>
+:root {
+  --primary-color: #2196F3;
+  --primary-hover: #1976D2;
+  --primary-dark: #1565C0;
+  --primary-rgb: 33,150,243;
+  --primary-light: rgba(33,150,243,0.08);
+  --primary-lighter: rgba(33,150,243,0.04);
+  --bg-color: #f5f7fa;
+  --card-bg: #ffffff;
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --border-color: #e5e7eb;
+  --danger-color: #ef4444;
+  --danger-rgb: 239,68,68;
+  --success-color: #22c55e;
+  --warning-color: #f59e0b;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:14px}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  background:linear-gradient(135deg,var(--primary-dark) 0%,var(--primary-color) 100%);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:12px;color:var(--text-primary);-webkit-font-smoothing:antialiased;
+}
+.container{background:var(--card-bg);border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,0.2);max-width:880px;width:100%;overflow:hidden}
+.header{background:linear-gradient(135deg,var(--primary-dark),var(--primary-color));color:#fff;padding:20px 28px}
+.header h1{font-size:20px;font-weight:700;margin-bottom:4px}
+.header p{font-size:13px;opacity:0.85}
+.body{padding:20px 28px}
+
+.steps{display:flex;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border-color);flex-wrap:wrap;gap:2px}
+.step{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-tertiary);font-weight:500;white-space:nowrap;border-radius:6px;padding:4px 8px;transition:background .15s;cursor:pointer}
+.step.active{color:var(--primary-color)}
+.step.done{color:var(--success-color)}
+.step.done:hover{background:rgba(34,197,94,0.06)}
+.step-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:2px solid var(--border-color);color:var(--text-tertiary);background:#fff;transition:all .2s;flex-shrink:0}
+.step.active .step-num{border-color:var(--primary-color);color:var(--primary-color);background:var(--primary-light)}
+.step.done .step-num{border-color:var(--success-color);color:#fff;background:var(--success-color)}
+.step-line{flex:1;height:2px;background:var(--border-color);margin:0 4px;min-width:4px}
+.step-line.done{background:var(--success-color)}
+
+.panel{display:none}
+.panel.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px}
+.form-group .hint{font-size:11px;color:var(--text-tertiary);margin-top:3px}
+input[type="text"],input[type="password"],input[type="number"],select,textarea{width:100%;padding:8px 12px;border:1px solid var(--border-color);border-radius:var(--radius);font-size:13px;transition:border-color .2s,box-shadow .2s;outline:none;font-family:inherit;background:var(--bg-color);color:var(--text-primary)}
+input:focus,select:focus,textarea:focus{border-color:var(--primary-color);box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.15)}
+textarea{resize:vertical;min-height:100px}
+.row{display:flex;gap:12px}
+.row>*{flex:1}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;font-family:inherit;-webkit-user-select:none;user-select:none}
+.btn-primary{background:var(--primary-color);color:#fff}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-primary:active{background:var(--primary-dark)}
+.btn-success{background:var(--success-color);color:#fff}
+.btn-success:hover{background:#16a34a}
+.btn-outline{background:#fff;color:var(--text-primary);border:1px solid var(--border-color)}
+.btn-outline:hover{background:var(--bg-color)}
+.btn-danger-outline{background:#fff;color:var(--danger-color);border:1px solid rgba(var(--danger-rgb),0.3)}
+.btn-danger-outline:hover{background:rgba(var(--danger-rgb),0.06)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
+.actions{display:flex;justify-content:space-between;margin-top:18px;padding-top:12px;border-top:1px solid var(--border-color)}
+
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500}
+.tag-blue{background:var(--primary-light);color:var(--primary-color)}
+.tag-green{background:rgba(34,197,94,0.1);color:var(--success-color)}
+.tag-red{background:rgba(var(--danger-rgb),0.08);color:var(--danger-color)}
+.tag-orange{background:rgba(245,158,11,0.1);color:var(--warning-color)}
+
+.people-table{width:100%;border-collapse:collapse;font-size:12px}
+.people-table th{background:var(--bg-color);padding:8px 10px;text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border-color);position:-webkit-sticky;position:sticky;top:0;z-index:1}
+.people-table td{padding:6px 10px;border-bottom:1px solid rgba(0,0,0,0.04);color:var(--text-primary)}
+.people-table tr:hover td{background:var(--primary-lighter)}
+.people-table input{padding:3px 6px;font-size:12px;border-radius:4px;background:var(--bg-color)}
+.people-table select{padding:3px 6px;font-size:12px;border-radius:4px;width:auto;min-width:52px;background:var(--bg-color)}
+.table-wrapper{max-height:320px;overflow-y:auto;border:1px solid var(--border-color);border-radius:var(--radius);-webkit-overflow-scrolling:touch}
+
+.import-area{border:2px dashed var(--border-color);border-radius:var(--radius);padding:16px;text-align:center;margin-bottom:12px;transition:all .15s}
+.import-area:hover,.import-area:active{border-color:var(--primary-color)}
+.import-area p{color:var(--text-secondary);font-size:13px;margin-bottom:10px}
+
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.summary-card{background:var(--bg-color);border-radius:var(--radius);padding:14px 10px;text-align:center}
+.summary-card .value{font-size:22px;font-weight:700;color:var(--primary-color)}
+.summary-card .label{font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+.alert{padding:10px 14px;border-radius:var(--radius);font-size:12px;margin-bottom:12px;display:flex;align-items:flex-start;gap:6px;line-height:1.5}
+.alert-info{background:rgba(var(--primary-rgb),0.06);color:var(--primary-dark);border:1px solid rgba(var(--primary-rgb),0.15)}
+.alert-success{background:rgba(34,197,94,0.06);color:#166534;border:1px solid rgba(34,197,94,0.2)}
+.alert-warning{background:rgba(245,158,11,0.06);color:#92400e;border:1px solid rgba(245,158,11,0.2)}
+
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:20px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal h3{font-size:15px;margin-bottom:12px}
+.modal .form-group{margin-bottom:10px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+.success-icon{width:60px;height:60px;border-radius:50%;background:rgba(34,197,94,0.1);color:var(--success-color);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px}
+.success-title{font-size:18px;font-weight:700;text-align:center;color:var(--text-primary);margin-bottom:6px}
+.success-desc{font-size:13px;text-align:center;color:var(--text-secondary);margin-bottom:20px}
+
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.empty-state{text-align:center;padding:30px 16px;color:var(--text-tertiary)}
+.empty-state p{font-size:13px}
+
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.toolbar-right{margin-left:auto;display:flex;gap:6px}
+
+/* 班管选择卡片 */
+.class-admin-cards{display:flex;flex-direction:column;gap:12px}
+.class-admin-card{border:2px solid var(--border-color);border-radius:var(--radius-lg);padding:16px;transition:all .15s}
+.class-admin-card.has-admin{border-color:var(--primary-color);background:var(--primary-lighter)}
+.class-admin-card .card-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.class-admin-card .class-badge{font-size:16px;font-weight:700;padding:4px 12px;border-radius:16px;background:var(--primary-color);color:#fff}
+.class-admin-card .class-title{font-size:14px;font-weight:600;color:var(--text-primary)}
+.class-admin-card .admin-info{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:var(--radius);border:1px solid var(--border-color)}
+.class-admin-card .admin-info .admin-empty{color:var(--text-tertiary);font-size:13px}
+.class-admin-card .admin-info .admin-name{font-size:14px;font-weight:600;color:var(--text-primary)}
+.class-admin-card .admin-info .admin-id{font-size:11px;color:var(--text-secondary);font-family:monospace}
+.class-admin-card .admin-info .admin-gender{font-size:11px;color:var(--text-tertiary)}
+.class-admin-card .admin-info .shield-icon{color:var(--primary-color);font-size:20px;flex-shrink:0}
+.select-admin-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px dashed var(--border-color);background:var(--bg-color);color:var(--text-secondary);font-family:inherit}
+.select-admin-btn:hover{border-color:var(--primary-color);color:var(--primary-color);background:var(--primary-lighter)}
+.clear-admin-btn{display:inline-flex;align-items:center;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;border:none;background:rgba(var(--danger-rgb),0.06);color:var(--danger-color);font-family:inherit;margin-left:auto}
+.clear-admin-btn:hover{background:rgba(var(--danger-rgb),0.12)}
+
+/* 班管选择列表（模态框中） */
+.admin-select-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .1s;border-radius:var(--radius);margin-bottom:2px}
+.admin-select-item:hover{background:var(--bg-color)}
+.admin-select-item.selected{background:var(--primary-light);border-color:rgba(var(--primary-rgb),0.2)}
+.admin-select-item .radio-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-color);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.admin-select-item.selected .radio-dot{border-color:var(--primary-color);background:var(--primary-color)}
+.admin-select-item.selected .radio-dot::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+.admin-select-item .item-name{font-size:13px;font-weight:500;flex:1}
+.admin-select-item .item-id{font-size:11px;color:var(--text-tertiary);font-family:monospace}
+.admin-select-item .item-gender{font-size:11px;color:var(--text-secondary)}
+
+/* ===== 960x600 平板优化 ===== */
+@media (max-width:960px),(max-height:620px){
+  body{padding:8px;align-items:flex-start}
+  .container{max-width:100%;border-radius:var(--radius)}
+  .header{padding:14px 20px}
+  .header h1{font-size:17px}
+  .header p{font-size:12px}
+  .body{padding:14px 20px}
+  .steps{margin-bottom:12px;padding-bottom:10px}
+  .step{font-size:10px;gap:3px}
+  .step-num{width:20px;height:20px;font-size:10px}
+  .step-line{margin:0 3px}
+  .form-group{margin-bottom:10px}
+  .form-group label{font-size:12px}
+  .form-group .hint{font-size:10px}
+  input[type="text"],input[type="password"],select{padding:7px 10px;font-size:13px}
+  .btn{padding:7px 14px;font-size:12px}
+  .btn-sm{padding:4px 8px;font-size:11px}
+  .actions{margin-top:12px;padding-top:8px}
+  .table-wrapper{max-height:220px}
+  .people-table{font-size:11px}
+  .people-table th,.people-table td{padding:4px 8px}
+  .summary-grid{grid-template-columns:repeat(4,1fr);gap:8px}
+  .summary-card{padding:10px 6px}
+  .summary-card .value{font-size:18px}
+  .summary-card .label{font-size:10px}
+  .alert{padding:8px 12px;font-size:11px}
+  .class-admin-card{padding:12px}
+  .class-admin-card .class-badge{font-size:14px;padding:3px 10px}
+}
+@media (max-width:600px){
+  .row{flex-direction:column;gap:0}
+  .summary-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>ClassNet 初始化配置</h1>
+    <p>按步骤完成届数、班级、预注册名单和班管设置</p>
+  </div>
+  <div class="body">
+    <!-- 步骤指示器 -->
+    <div class="steps">
+      <div class="step active" id="step-ind-1" onclick="if(currentStep>1)goStep(1)"><div class="step-num">1</div><span>届数</span></div>
+      <div class="step-line" id="step-line-1"></div>
+      <div class="step" id="step-ind-2" onclick="if(currentStep>2)goStep(2)"><div class="step-num">2</div><span>班级</span></div>
+      <div class="step-line" id="step-line-2"></div>
+      <div class="step" id="step-ind-3" onclick="if(currentStep>3)goStep(3)"><div class="step-num">3</div><span>名单</span></div>
+      <div class="step-line" id="step-line-3"></div>
+      <div class="step" id="step-ind-4" onclick="if(currentStep>4)goStep(4)"><div class="step-num">4</div><span>班管</span></div>
+      <div class="step-line" id="step-line-4"></div>
+      <div class="step" id="step-ind-5" onclick="if(currentStep>5)goStep(5)"><div class="step-num">5</div><span>确认</span></div>
+    </div>
+
+    <!-- 步骤1: 基本配置 -->
+    <div class="panel active" id="panel-1">
+      <div class="alert alert-info">
+        <span>&#9432;</span>
+        <div>设置届数（毕业年份后两位）。用户ID格式为 <b>YYCCNN</b>（如 250804 = 25届08班04号）。班管ID末两位固定为 00，在步骤4中从预注册学生中指定。</div>
+      </div>
+      <div class="form-group">
+        <label>届数</label>
+        <input type="text" id="cohort" maxlength="2" placeholder="如 25（表示2025届）" value="25" autofocus>
+        <div class="hint">2位数字，对应毕业年份后两位，如2025届填 25</div>
+      </div>
+      <div class="actions"><div></div><button class="btn btn-primary" onclick="goStep(2)">下一步 &rarr;</button></div>
+    </div>
+
+    <!-- 步骤2: 班级配置 -->
+    <div class="panel" id="panel-2">
+      <div class="alert alert-info"><span>&#9432;</span><div>设置本服务器所属班级。每个班级自动创建对应的群组。每个班级可指定一名班管（步骤4）。</div></div>
+      <div class="row">
+        <div class="form-group">
+          <label>班级号</label>
+          <input type="text" id="classNum" maxlength="2" placeholder="如 08、18">
+          <div class="hint">2位数字，用于生成用户ID（如 250801）</div>
+        </div>
+        <div class="form-group">
+          <label>班级名称</label>
+          <input type="text" id="className" placeholder="如 8班（留空自动生成）">
+          <div class="hint">留空则根据班级号自动生成</div>
+        </div>
+      </div>
+      <div id="classCardInfo" style="display:none">
+        <div class="alert alert-success" id="classCardAlert"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="goStep(1)">&larr; 上一步</button>
+        <button class="btn btn-primary" onclick="confirmClass()">下一步 &rarr;</button>
+      </div>
+    </div>
+
+    <!-- 步骤3: 预注册名单 -->
+    <div class="panel" id="panel-3">
+      <div class="alert alert-info"><span>&#9432;</span><div>录入各班级预注册名单，可批量导入或手动添加。学生通过真实姓名注册，系统自动匹配 user_id。</div></div>
+      <div id="classTabContent"><div class="empty-state"><p>请先在步骤2中设置班级</p></div></div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="goStep(2)">&larr; 上一步</button>
+        <button class="btn btn-primary" onclick="goStep(4)">下一步 &rarr;</button>
+      </div>
+    </div>
+
+    <!-- 步骤4: 班管设置（新增） -->
+    <div class="panel" id="panel-4">
+      <div class="alert alert-info">
+        <span>&#9432;</span>
+        <div>每个班级指定一名<b>班管</b>（班级管理员）。班管ID格式为 YYCC00，拥有班级全部管理权限。班管本人也是班级学生，通过注册页面正常注册后自动获得管理员身份。</div>
+      </div>
+      <div id="classAdminContent">
+        <div class="empty-state"><p>请先完成步骤2和步骤3</p></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="goStep(3)">&larr; 上一步</button>
+        <button class="btn btn-primary" onclick="goStep(5)">下一步 &rarr;</button>
+      </div>
+    </div>
+
+    <!-- 步骤5: 确认保存 -->
+    <div class="panel" id="panel-5">
+      <div id="summaryContent"></div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="goStep(4)">&larr; 上一步</button>
+        <button class="btn btn-success" id="saveBtn" onclick="saveConfig()">保存配置并初始化</button>
+      </div>
+    </div>
+
+    <!-- 成功 -->
+    <div class="panel" id="panel-success">
+      <div class="success-icon">&#10003;</div>
+      <div class="success-title">配置完成</div>
+      <div class="success-desc">ClassNet 已成功初始化。班管通过注册页面用真实姓名注册后，即自动获得管理员权限。</div>
+      <div style="text-align:center"><a href="/" class="btn btn-primary" style="text-decoration:none">进入系统</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- 选择班管模态框 -->
+<div class="modal-overlay" id="selectAdminModal" style="display:none" onclick="if(event.target===this)hideSelectAdminModal()">
+  <div class="modal" style="max-width:440px">
+    <h3 id="selectAdminTitle">选择班管</h3>
+    <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:10px">单击选中该班级的班管。班管ID自动生成为 YYCC00 格式。</div>
+    <div id="selectAdminList" style="max-height:340px;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="clearClassAdmin()">清除选择</button>
+      <button class="btn btn-primary btn-sm" onclick="hideSelectAdminModal()">完成</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentStep = 1;
+var classes = {};       // { '08': '8班' }
+var records = {};       // { 'class08': [{real_name, user_id, gender}] }
+var activeClassTab = null;
+var classAdmins = {};   // { '08': recordIndex } — 每班一个班管（索引值）
+var initialState = null;
+
+/* ===== 拼音排序 ===== */
+var PINYIN_MAP={'阿':'A','艾':'A','安':'A','敖':'A','巴':'B','白':'B','包':'B','鲍':'B','毕':'B','卞':'B','薄':'B','卜':'B','蔡':'C','曹':'C','岑':'C','柴':'C','常':'C','车':'C','陈':'C','成':'C','程':'C','池':'C','迟':'C','仇':'C','褚':'C','崔':'C','戴':'D','代':'D','邓':'D','狄':'D','刁':'D','丁':'D','董':'D','窦':'D','杜':'D','段':'D','范':'F','方':'F','房':'F','费':'F','冯':'F','凤':'F','伏':'F','符':'F','付':'F','傅':'F','扶':'F','甘':'G','高':'G','葛':'G','耿':'G','龚':'G','宫':'G','巩':'G','苟':'G','谷':'G','顾':'G','关':'G','管':'G','郭':'G','桂':'G','韩':'H','杭':'H','郝':'H','何':'H','贺':'H','赫':'H','洪':'H','侯':'H','胡':'H','花':'H','华':'H','黄':'H','霍':'H','姬':'J','吉':'J','纪':'J','贾':'J','江':'J','姜':'J','蒋':'J','金':'J','靳':'J','康':'K','柯':'K','孔':'K','寇':'K','赖':'L','蓝':'L','郎':'L','劳':'L','雷':'L','黎':'L','李':'L','厉':'L','连':'L','廉':'L','梁':'L','廖':'L','林':'L','凌':'L','刘':'L','柳':'L','龙':'L','娄':'L','卢':'L','鲁':'L','陆':'L','吕':'L','栾':'L','罗':'L','骆':'L','麻':'M','马':'M','满':'M','毛':'M','梅':'M','孟':'M','米':'M','苗':'M','闵':'M','缪':'M','莫':'M','牟':'M','穆':'M','倪':'N','聂':'N','宁':'N','牛':'N','钮':'N','欧':'O','欧阳':'O','潘':'P','庞':'P','裴':'P','彭':'P','蒲':'P','濮':'P','戚':'Q','齐':'Q','钱':'Q','强':'Q','秦':'Q','邱':'Q','裘':'Q','屈':'Q','瞿':'Q','冉':'R','饶':'R','任':'R','戎':'R','荣':'R','容':'R','阮':'R','芮':'R','沙':'S','单':'S','尚':'S','邵':'S','申':'S','沈':'S','盛':'S','施':'S','石':'S','史':'S','舒':'S','司':'S','宋':'S','苏':'S','孙':'S','谈':'T','谭':'T','汤':'T','唐':'T','陶':'T','滕':'T','田':'T','童':'T','涂':'T','宛':'W','万':'W','汪':'W','王':'W','韦':'W','魏':'W','温':'W','文':'W','翁':'W','吴':'W','伍':'W','武':'W','夏':'X','咸':'X','项':'X','向':'X','肖':'X','谢':'X','辛':'X','邢':'X','徐':'X','许':'X','薛':'X','严':'Y','颜':'Y','晏':'Y','杨':'Y','姚':'Y','叶':'Y','殷':'Y','尹':'Y','应':'Y','尤':'Y','于':'Y','余':'Y','俞':'Y','虞':'Y','元':'Y','袁':'Y','岳':'Y','臧':'Z','曾':'Z','詹':'Z','湛':'Z','张':'Z','章':'Z','赵':'Z','甄':'Z','郑':'Z','钟':'Z','仲':'Z','周':'Z','朱':'Z','诸':'Z','竺':'Z','祝':'Z','庄':'Z','卓':'Z','邹':'Z','祖':'Z'};
+function getPinyinInitial(n){if(!n)return'';if(n.indexOf('欧阳')===0)return'O';var f=n.charAt(0);return PINYIN_MAP[f]||f}
+function sortByPinyin(arr){return arr.slice().sort(function(a,b){var pa=getPinyinInitial(a.real_name),pb=getPinyinInitial(b.real_name);if(pa!==pb)return pa<pb?-1:1;return a.real_name.localeCompare(b.real_name,'zh-CN')})}
+
+/* ===== 加载现有状态 ===== */
+window.addEventListener('load', function() { loadStatus(); });
+
+window.addEventListener('beforeunload', function(e) {
+  if (!initialState) return;
+  var currentCohort = document.getElementById('cohort').value.trim();
+  if (currentCohort !== initialState.cohort) {
+    e.preventDefault(); e.returnValue = '您有未保存的配置'; return e.returnValue;
+  }
+  if (JSON.stringify(records) !== JSON.stringify(initialState.records)) {
+    e.preventDefault(); e.returnValue = '您有未保存的配置'; return e.returnValue;
+  }
+  if (JSON.stringify(classAdmins) !== JSON.stringify(initialState.classAdmins)) {
+    e.preventDefault(); e.returnValue = '您有未保存的配置'; return e.returnValue;
+  }
+});
+
+function loadStatus() {
+  fetch('/api/setup/status').then(function(r) { return r.json(); }).then(function(data) {
+    if (data.cohorts && data.cohorts.length > 0) document.getElementById('cohort').value = data.cohorts[0];
+
+    // 从现有 ADMIN_USER_IDS 推断班管分配
+    var adminIds = [];
+    if (data.env.ADMIN_USER_IDS) {
+      adminIds = data.env.ADMIN_USER_IDS.split(',').map(function(s){return s.trim()}).filter(Boolean);
+    }
+
+    var hasExistingConfig = false;
+    if (data.preRecords) {
+      Object.keys(data.preRecords).forEach(function(key) {
+        var classNum = key.replace('class', '');
+        var classRecords = data.preRecords[key] || [];
+        if (classRecords.length > 0) {
+          classes[classNum] = parseInt(classNum, 10) + '班';
+          records[key] = classRecords;
+          hasExistingConfig = true;
+          // 推断班管：user_id 末两位为 00
+          for (var ri = 0; ri < classRecords.length; ri++) {
+            var uid = classRecords[ri].user_id || '';
+            if (uid.length === 6 && uid.substring(4, 6) === '00') {
+              classAdmins[classNum] = ri;
+              break;
+            }
+          }
+        }
+      });
+    }
+
+    // 显示已有配置警告
+    if (hasExistingConfig) {
+      var totalExisting = 0;
+      Object.keys(records).forEach(function(k) { totalExisting += (records[k]||[]).length; });
+      var banner = document.createElement('div');
+      banner.id = 'existingDataBanner';
+      banner.className = 'alert alert-warning';
+      banner.style.marginBottom = '18px';
+      banner.innerHTML = '<span>&#9888;</span><div><b>检测到已有配置</b>：已配置 ' + Object.keys(classes).length + ' 个班级、共 ' + totalExisting + ' 人。<br>修改班级配置将清空所有已录入数据，如仅需调整请直接在对应步骤修改后保存。</div>';
+      var bodyEl = document.querySelector('.body');
+      if (bodyEl) bodyEl.insertBefore(banner, bodyEl.firstChild);
+    }
+
+    renderClassCards();
+    // 存储初始状态快照
+    initialState = {
+      cohort: document.getElementById('cohort').value.trim(),
+      records: JSON.parse(JSON.stringify(records)),
+      classAdmins: JSON.parse(JSON.stringify(classAdmins))
+    };
+  }).catch(function(e) { console.error('Load status failed:', e); });
+}
+
+/* ===== 步骤导航 ===== */
+function goStep(n) {
+  var totalSteps = 5;
+
+  // 步骤验证
+  if (n >= 2) {
+    var cohort = document.getElementById('cohort').value.trim();
+    if (!/^\d{2}$/.test(cohort)) { showToast('届数必须为2位数字'); return; }
+  }
+  if (n >= 3) {
+    if (Object.keys(classes).length === 0) { showToast('请先在步骤2中设置班级'); return; }
+  }
+  if (n >= 4) {
+    renderClassAdminContent();
+  }
+  if (n >= 5) {
+    var hasRecords = false;
+    Object.keys(records).forEach(function(k) { if ((records[k]||[]).length > 0) hasRecords = true; });
+    if (!hasRecords) { showToast('请先录入预注册名单'); return; }
+    var allHaveAdmin = Object.keys(classes).every(function(num) {
+      return classAdmins.hasOwnProperty(num) && classAdmins[num] !== undefined && classAdmins[num] !== null;
+    });
+    if (!allHaveAdmin) { showToast('请为每个班级选择班管'); return; }
+    renderSummary();
+  }
+
+  // 回填班级信息
+  if (n === 2) {
+    var ck = Object.keys(classes);
+    if (ck.length > 0) {
+      document.getElementById('classNum').value = ck[0];
+      document.getElementById('className').value = classes[ck[0]];
+    }
+    renderClassCards();
+  }
+  if (n === 3) renderClassTabs();
+  if (n === 4) renderClassAdminContent();
+
+  currentStep = n;
+  for (var i = 1; i <= totalSteps; i++) {
+    document.getElementById('panel-' + i).classList.toggle('active', i === n);
+    var si = document.getElementById('step-ind-' + i);
+    si.className = 'step' + (i === n ? ' active' : (i < n ? ' done' : ''));
+    if (i < totalSteps) {
+      var sl = document.getElementById('step-line-' + i);
+      if (sl) sl.className = 'step-line' + (i < n ? ' done' : '');
+    }
+  }
+}
+
+/* ===== 班级配置 ===== */
+/* ===== 自定义确认对话框 ===== */
+function showConfirm(msg, onOk, onCancel) {
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.cssText = 'display:flex;z-index:2000';
+  overlay.innerHTML = '<div class="modal" style="max-width:400px"><h3>确认操作</h3><p style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">'+msg+'</p><div class="modal-actions"><button class="btn btn-outline btn-sm" id="confirmCancelBtn">取消</button><button class="btn btn-primary btn-sm" id="confirmOkBtn">确认继续</button></div></div>';
+  document.body.appendChild(overlay);
+  document.getElementById('confirmOkBtn').onclick = function() { document.body.removeChild(overlay); if(onOk) onOk(); };
+  document.getElementById('confirmCancelBtn').onclick = function() { document.body.removeChild(overlay); if(onCancel) onCancel(); };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) { document.body.removeChild(overlay); if(onCancel) onCancel(); } });
+}
+
+/* ===== Toast 提示 ===== */
+function showToast(msg, type) {
+  var existing = document.getElementById('customToast');
+  if (existing) existing.remove();
+  var toast = document.createElement('div');
+  toast.id = 'customToast';
+  var bg = type === 'warning' ? '#f59e0b' : (type === 'error' ? '#ef4444' : '#22c55e');
+  toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:3000;box-shadow:0 4px 20px rgba(0,0,0,0.25);animation:toastIn .3s ease;max-width:90vw;text-align:center';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(function() { if (toast.parentNode) toast.remove(); }, 3000);
+}
+
+function confirmClass() {
+  var num = document.getElementById('classNum').value.trim();
+  var name = document.getElementById('className').value.trim();
+  if (!/^\d{2}$/.test(num)) { showToast('班级号必须为2位数字（如 08、18）', 'warning'); return; }
+  if (!name) name = parseInt(num, 10) + '班';
+
+  var hasExistingData = false;
+  Object.keys(records).forEach(function(k) { if ((records[k]||[]).length > 0) hasExistingData = true; });
+
+  function doConfirm() {
+    classes = {};
+    records = {};
+    classAdmins = {};
+    classes[num] = name;
+    records['class' + num] = [];
+    activeClassTab = num;
+    goStep(3);
+  }
+
+  if (hasExistingData) {
+    var totalCount = 0;
+    Object.keys(records).forEach(function(k) { totalCount += (records[k]||[]).length; });
+    showConfirm(
+      '<b>检测到已有配置数据</b>（' + Object.keys(classes).length + ' 个班级，共 ' + totalCount + ' 人）。<br><br>修改班级配置将<b>清空所有已录入的预注册名单和班管设置</b>，确定继续吗？',
+      doConfirm
+    );
+  } else {
+    doConfirm();
+  }
+}
+
+function renderClassCards() {
+  var container = document.getElementById('classCardInfo');
+  var alertEl = document.getElementById('classCardAlert');
+  if (!container || !alertEl) return;
+  var classKeys = Object.keys(classes);
+  if (classKeys.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  var num = classKeys[0];
+  var key = 'class' + num;
+  var count = (records[key] || []).length;
+  var cohort = document.getElementById('cohort').value.trim() || '25';
+  alertEl.innerHTML = '<strong>&#10003; 班级已设置：</strong>' + escHtml(classes[num]) + '（编号 ' + num + '）&nbsp;&middot;&nbsp;' + count + ' 人预注册 &middot; ID 范围 ' + cohort + num + '01 ~ ' + cohort + num + String(Math.max(count, 1)).padStart(2, '0');
+}
+
+/* ===== 预注册名单（步骤3） ===== */
+function renderClassTabs() {
+  var keys = Object.keys(classes).sort();
+  if (keys.length === 0) { document.getElementById('classTabContent').innerHTML='<div class="empty-state"><p>请先在步骤2中设置班级</p></div>'; return; }
+  if (!activeClassTab || !classes[activeClassTab]) activeClassTab = keys[0];
+  renderClassTabContent();
+}
+
+function renderClassTabContent() {
+  var container = document.getElementById('classTabContent');
+  if (!activeClassTab) { container.innerHTML=''; return; }
+  var key = 'class' + activeClassTab;
+  var list = records[key] || [];
+  var cohort = document.getElementById('cohort').value.trim() || '25';
+
+  var h = '<div class="toolbar">';
+  h += '<button class="btn btn-outline btn-sm" onclick="showImportArea()">&#128229; 导入名单</button>';
+  h += '<button class="btn btn-outline btn-sm" onclick="addPerson()">+ 手动添加</button>';
+  if (list.length > 0) {
+    h += '<button class="btn btn-outline btn-sm" onclick="batchSetGender(\'男\')">&#9794; 全男</button>';
+    h += '<button class="btn btn-outline btn-sm" onclick="batchSetGender(\'女\')">&#9792; 全女</button>';
+  }
+  h += '<div class="toolbar-right">';
+  if (list.length > 1) h += '<button class="btn btn-outline btn-sm" onclick="sortByPinyinAndRefresh()">&#127919; 拼音排序</button>';
+  h += '<button class="btn btn-danger-outline btn-sm" onclick="clearAllPeople()">&#128465; 清空</button>';
+  h += '</div></div>';
+
+  h += '<div class="import-area" id="importArea" style="display:none">';
+  h += '<p>粘贴名单，每行一个姓名（支持"序号→姓名"格式）</p>';
+  h += '<textarea id="importText" rows="5" placeholder="代家昇&#10;段然&#10;或&#10;1→代家昇&#10;2→段然"></textarea>';
+  h += '<div style="margin-top:8px;display:flex;gap:6px;justify-content:center">';
+  h += '<button class="btn btn-outline btn-sm" onclick="hideImportArea()">取消</button>';
+  h += '<button class="btn btn-primary btn-sm" onclick="doImport()">导入</button>';
+  h += '</div></div>';
+
+  if (list.length > 0) {
+    h += '<div class="table-wrapper"><table class="people-table">';
+    h += '<thead><tr><th style="width:36px">#</th><th style="width:78px">ID</th><th>姓名</th><th style="width:60px">性别</th><th style="width:36px"></th></tr></thead><tbody>';
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      var uid = cohort + activeClassTab + String(i+1).padStart(2,'0');
+      h += '<tr><td style="color:var(--text-tertiary)">'+(i+1)+'</td>';
+      h += '<td><span class="tag tag-blue">'+uid+'</span></td>';
+      h += '<td><input type="text" value="'+escHtml(p.real_name)+'" onchange="updatePerson('+i+',\'real_name\',this.value)"></td>';
+      h += '<td><select onchange="updatePerson('+i+',\'gender\',this.value)">';
+      h += '<option value=""'+(!p.gender?' selected':'')+'>-</option>';
+      h += '<option value="男"'+(p.gender==='男'?' selected':'')+'>男</option>';
+      h += '<option value="女"'+(p.gender==='女'?' selected':'')+'>女</option>';
+      h += '</select></td>';
+      h += '<td><button class="btn btn-danger-outline btn-sm" onclick="removePerson('+i+')" style="padding:2px 6px">&times;</button></td></tr>';
+    }
+    h += '</tbody></table></div>';
+    h += '<div style="margin-top:8px;font-size:11px;color:var(--text-tertiary)">共 '+list.length+' 人 &middot; ID: '+cohort+activeClassTab+'01 ~ '+cohort+activeClassTab+String(list.length).padStart(2,'0')+'</div>';
+  } else {
+    h += '<div class="empty-state"><p>暂无人员，请导入或手动添加</p></div>';
+  }
+  container.innerHTML = h;
+}
+
+function showImportArea(){var el=document.getElementById('importArea');if(el)el.style.display='block'}
+function hideImportArea(){var el=document.getElementById('importArea');if(el)el.style.display='none'}
+function doImport(){
+  var text=document.getElementById('importText').value.trim();
+  if(!text){showToast('请输入名单内容');return}
+  var lines = text.split('\n').map(function(l){return l.trim()}).filter(function(l){return l.length > 0});
+  if (lines.length === 0) { showToast('未检测到有效姓名'); return; }
+  fetch('/api/setup/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:lines.join('\n'),classNum:activeClassTab})})
+  .then(function(r){return r.json()}).then(function(data){
+    if(data.code!==200){showToast(data.message);return}
+    var key='class'+activeClassTab,existing=records[key]||[],en={};
+    existing.forEach(function(p){en[p.real_name]=true});
+    var added=0;
+    data.names.forEach(function(name){if(!en[name]){existing.push({real_name:name,user_id:'',gender:''});en[name]=true;added++}});
+    records[key]=existing;hideImportArea();renderClassTabs();renderClassCards();
+    showToast('导入 '+added+' 人'+(data.count-added>0?'，跳过 '+(data.count-added)+' 个重复':''));
+  }).catch(function(e){showToast('导入失败: '+e.message)});
+}
+function addPerson(){
+  var key='class'+activeClassTab; records[key]=records[key]||[];
+  var hasEmpty = records[key].some(function(p){return !p.real_name.trim()});
+  if (hasEmpty) { showToast('请先填写空行的姓名或删除空行'); return; }
+  records[key].push({real_name:'',user_id:'',gender:''});
+  renderClassTabs();
+}
+function updatePerson(idx,field,value){
+  var key='class'+activeClassTab;
+  if(!records[key]||!records[key][idx]) return;
+  if (field === 'real_name' && value.trim()) {
+    for (var i = 0; i < records[key].length; i++) {
+      if (i !== idx && records[key][i].real_name === value.trim()) {
+        showToast('姓名 "' + value.trim() + '" 已存在');
+        renderClassTabs(); return;
+      }
+    }
+  }
+  records[key][idx][field] = value;
+}
+function removePerson(idx){
+  var key='class'+activeClassTab; if(!records[key]) return;
+  // 如果被移除的是班管，清除班管选择
+  if (classAdmins[activeClassTab] === idx) {
+    delete classAdmins[activeClassTab];
+  } else if (classAdmins[activeClassTab] > idx) {
+    classAdmins[activeClassTab]--;
+  }
+  records[key].splice(idx,1);
+  renderClassTabs(); renderClassCards();
+}
+function batchSetGender(g) {
+  var key = 'class' + activeClassTab;
+  if (!records[key] || records[key].length === 0) return;
+  showConfirm('将当前班级所有人员性别设为<b>' + g + '</b>，确定吗？', function() {
+    for (var i = 0; i < records[key].length; i++) { records[key][i].gender = g; }
+    renderClassTabs();
+  });
+}
+function clearAllPeople(){
+  showConfirm('确定清空当前班级的所有人员吗？此操作不可恢复。', function() {
+    records['class'+activeClassTab]=[];
+    classAdmins[activeClassTab]=null;
+    renderClassTabs();renderClassCards();
+  });
+}
+function sortByPinyinAndRefresh(){
+  var key='class'+activeClassTab, list=records[key];
+  if(!list||list.length<2)return;
+  // 保存班管引用（按姓名匹配）
+  var adminIdx = classAdmins[activeClassTab];
+  var adminName = (adminIdx !== undefined && adminIdx !== null && list[adminIdx]) ? list[adminIdx].real_name : null;
+  records[key] = sortByPinyin(list);
+  if (adminName) {
+    classAdmins[activeClassTab] = null;
+    for (var i = 0; i < records[key].length; i++) {
+      if (records[key][i].real_name === adminName) { classAdmins[activeClassTab] = i; break; }
+    }
+  }
+  renderClassTabs(); renderClassCards();
+}
+
+/* ===== 步骤4: 班管设置 ===== */
+function renderClassAdminContent() {
+  var container = document.getElementById('classAdminContent');
+  var classKeys = Object.keys(classes).sort();
+  if (classKeys.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>请先设置班级和预注册名单</p></div>';
+    return;
+  }
+  var cohort = document.getElementById('cohort').value.trim() || '25';
+  var h = '<div class="class-admin-cards">';
+  classKeys.forEach(function(num) {
+    var key = 'class' + num;
+    var list = records[key] || [];
+    var adminIdx = classAdmins[num];
+    var hasAdmin = adminIdx !== undefined && adminIdx !== null && list[adminIdx];
+    var adminId = cohort + num + '00';
+
+    h += '<div class="class-admin-card' + (hasAdmin ? ' has-admin' : '') + '">';
+    h += '<div class="card-header">';
+    h += '<span class="class-badge">' + num + '</span>';
+    h += '<span class="class-title">' + escHtml(classes[num]) + '</span>';
+    h += '</div>';
+
+    h += '<div class="admin-info">';
+    if (hasAdmin) {
+      var admin = list[adminIdx];
+      h += '<span class="shield-icon">&#128737;</span>';
+      h += '<span class="admin-name">' + escHtml(admin.real_name) + '</span>';
+      h += '<span class="admin-gender">' + (admin.gender || '') + '</span>';
+      h += '<span class="admin-id">ID: ' + adminId + '（班管）</span>';
+      h += '<button class="clear-admin-btn" onclick="event.stopPropagation();clearClassAdminNum(\''+num+'\')">&#10005; 取消</button>';
+    } else {
+      h += '<span class="admin-empty">暂未选择班管</span>';
+    }
+    h += '</div>';
+
+    if (!hasAdmin) {
+      h += '<div style="margin-top:8px">';
+      h += '<button class="select-admin-btn" onclick="showSelectAdminModal(\''+num+'\')">';
+      h += '&#128269; 从预注册名单中选择班管</button>';
+      h += '</div>';
+    } else {
+      h += '<div style="margin-top:8px">';
+      h += '<button class="select-admin-btn" onclick="showSelectAdminModal(\''+num+'\')">&#128260; 更换班管</button>';
+      h += '</div>';
+    }
+    h += '</div>';
+  });
+  h += '</div>';
+  container.innerHTML = h;
+}
+
+var selectingClassNum = null;
+function showSelectAdminModal(classNum) {
+  selectingClassNum = classNum;
+  var key = 'class' + classNum;
+  var list = records[key] || [];
+  var selectedIdx = classAdmins[classNum];
+  var cohort = document.getElementById('cohort').value.trim() || '25';
+
+  document.getElementById('selectAdminTitle').textContent = classes[classNum] + ' — 选择班管';
+  var h = '';
+  if (list.length === 0) {
+    h = '<div class="empty-state"><p>暂无预注册人员，请先在步骤3中添加</p></div>';
+  } else {
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      if (!p.real_name.trim()) continue; // 跳过空姓名
+      var isSelected = selectedIdx === i;
+      var adminId = cohort + classNum + '00';
+      h += '<div class="admin-select-item' + (isSelected ? ' selected' : '') + '" onclick="selectClassAdmin('+i+')">';
+      h += '<div class="radio-dot"></div>';
+      h += '<span class="item-name">' + escHtml(p.real_name) + '</span>';
+      h += '<span class="item-gender">' + (p.gender || '') + '</span>';
+      h += '<span class="item-id">→ ' + adminId + '</span>';
+      h += '</div>';
+    }
+  }
+  document.getElementById('selectAdminList').innerHTML = h;
+  document.getElementById('selectAdminModal').style.display = 'flex';
+}
+function hideSelectAdminModal() {
+  document.getElementById('selectAdminModal').style.display = 'none';
+  renderClassAdminContent();
+}
+function selectClassAdmin(idx) {
+  classAdmins[selectingClassNum] = idx;
+  showSelectAdminModal(selectingClassNum); // 刷新列表
+}
+function clearClassAdmin() {
+  delete classAdmins[selectingClassNum];
+  showSelectAdminModal(selectingClassNum);
+}
+function clearClassAdminNum(num) {
+  delete classAdmins[num];
+  renderClassAdminContent();
+}
+
+/* ===== 步骤5: 摘要 ===== */
+function renderSummary() {
+  var cohort = document.getElementById('cohort').value.trim();
+  var totalPeople = 0;
+  var classStats = [];
+  Object.keys(classes).sort().forEach(function(num) {
+    var key = 'class' + num;
+    var count = (records[key] || []).length;
+    totalPeople += count;
+    classStats.push({ num: num, name: classes[num], count: count });
+  });
+
+  var h = '<div class="summary-grid">';
+  h += '<div class="summary-card"><div class="value">'+cohort+'</div><div class="label">届数</div></div>';
+  h += '<div class="summary-card"><div class="value">'+classStats.length+'</div><div class="label">班级</div></div>';
+  h += '<div class="summary-card"><div class="value">'+totalPeople+'</div><div class="label">总人数</div></div>';
+  h += '<div class="summary-card"><div class="value">'+classStats.length+'</div><div class="label">班管</div></div>';
+  h += '</div>';
+
+  // 班管列表
+  h += '<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">班管设置</div>';
+  h += '<table class="people-table"><thead><tr><th>班级</th><th>班管姓名</th><th>班管ID</th><th>性别</th></tr></thead><tbody>';
+  classStats.forEach(function(cs) {
+    var adminIdx = classAdmins[cs.num];
+    var list = records['class'+cs.num] || [];
+    var hasAdmin = adminIdx !== undefined && adminIdx !== null && list[adminIdx];
+    var adminId = cohort + cs.num + '00';
+    h += '<tr>';
+    h += '<td><span class="tag tag-blue">'+cs.num+'</span> '+escHtml(cs.name)+'</td>';
+    if (hasAdmin) {
+      h += '<td><strong>'+escHtml(list[adminIdx].real_name)+'</strong></td>';
+      h += '<td><span class="tag tag-green">'+adminId+'</span></td>';
+      h += '<td>'+escHtml(list[adminIdx].gender||'-')+'</td>';
+    } else {
+      h += '<td colspan="3" style="color:var(--danger-color)">未设置</td>';
+    }
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+
+  // 班级详情
+  h += '<div><div style="font-size:13px;font-weight:600;margin-bottom:6px">班级预注册概况</div>';
+  h += '<table class="people-table"><thead><tr><th>班级</th><th>名称</th><th>人数</th><th>ID范围</th></tr></thead><tbody>';
+  classStats.forEach(function(cs) {
+    h += '<tr><td>'+cs.num+'</td><td>'+escHtml(cs.name)+'</td><td>'+cs.count+' 人</td>';
+    h += '<td><span class="tag tag-blue">'+cohort+cs.num+'01</span> ~ <span class="tag tag-blue">'+cohort+cs.num+String(Math.max(cs.count,1)).padStart(2,'0')+'</span></td></tr>';
+  });
+  h += '</tbody></table></div>';
+
+  document.getElementById('summaryContent').innerHTML = h;
+}
+
+/* ===== 保存 ===== */
+function saveConfig() {
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 保存中...';
+
+  var cohort = document.getElementById('cohort').value.trim();
+
+  // 从 classAdmins 生成 adminIds（YYCC00 格式）
+  var adminIds = [];
+  Object.keys(classes).sort().forEach(function(num) {
+    adminIds.push(cohort + num + '00');
+  });
+
+  var classNames = {};
+  Object.keys(classes).forEach(function(num) { classNames[num] = classes[num]; });
+
+  // 深拷贝 records 并标记班管
+  var recordsCopy = {};
+  Object.keys(records).forEach(function(key) {
+    var classNum = key.replace('class', '');
+    recordsCopy[key] = records[key].map(function(p, idx) {
+      var isAdmin = (classAdmins[classNum] === idx);
+      return {
+        real_name: p.real_name,
+        user_id: p.user_id,
+        gender: p.gender,
+        is_class_admin: isAdmin
+      };
+    });
+  });
+
+  // 验证空姓名
+  var hasEmpty = false;
+  Object.keys(records).forEach(function(key) {
+    (records[key]||[]).forEach(function(p) { if(!p.real_name.trim()) hasEmpty=true; });
+  });
+  if (hasEmpty) { btn.disabled=false; btn.textContent='保存配置并初始化'; showToast('名单中存在空姓名，请检查'); return; }
+
+  fetch('/api/setup/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cohort: cohort, classNames: classNames, adminIds: adminIds, records: recordsCopy })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.code !== 200) { btn.disabled=false; btn.textContent='保存配置并初始化'; showToast(data.message); return; }
+    for (var i = 1; i <= 5; i++) {
+      document.getElementById('panel-' + i).classList.remove('active');
+      document.getElementById('step-ind-' + i).className = 'step done';
+      if (i < 5) document.getElementById('step-line-' + i).className = 'step-line done';
+    }
+    document.getElementById('panel-success').classList.add('active');
+  }).catch(function(e) { btn.disabled=false; btn.textContent='保存配置并初始化'; showToast('保存失败: '+e.message); });
+}
+
+function escHtml(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+</script>
+</body>
+</html>

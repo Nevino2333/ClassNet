@@ -1,0 +1,168 @@
+// Polyfills for Chrome 78+ compatibility (Mermaid v11 requires ES2022 APIs)
+(function() {
+  // Object.hasOwn (ES2022, Chrome 93+)
+  if (!Object.hasOwn) {
+    Object.hasOwn = function(obj, prop) {
+      return Object.prototype.hasOwnProperty.call(obj, prop);
+    };
+  }
+  // String.prototype.replaceAll (ES2021, Chrome 85+)
+  if (!String.prototype.replaceAll) {
+    String.prototype.replaceAll = function(search, replacement) {
+      if (typeof search === 'string') {
+        return String(this).split(search).join(replacement);
+      }
+      if (Object.prototype.toString.call(search) === '[object RegExp]') {
+        if (!search.global) throw new TypeError('replaceAll must be called with a global RegExp');
+        return String(this).replace(search, replacement);
+      }
+      return String(this).split(String(search)).join(replacement);
+    };
+  }
+  // Promise.any + AggregateError (ES2021, Chrome 85+)
+  if (!Promise.any) {
+    var AggregateErrorImpl = typeof AggregateError !== 'undefined' ? AggregateError : (function(errors, message) {
+      var e = Error.call(this, message);
+      this.errors = errors;
+      this.message = message || '';
+      this.name = 'AggregateError';
+      if (Error.captureStackTrace) Error.captureStackTrace(this, AggregateErrorImpl);
+      return this;
+    });
+    if (typeof AggregateError === 'undefined') {
+      AggregateErrorImpl.prototype = Object.create(Error.prototype);
+      AggregateErrorImpl.prototype.constructor = AggregateErrorImpl;
+      window.AggregateError = AggregateErrorImpl;
+      self.AggregateError = AggregateErrorImpl;
+    }
+    Promise.any = function(promises) {
+      return new Promise(function(resolve, reject) {
+        var errors = [];
+        var remaining = 0;
+        var list = Array.from(promises || []);
+        if (list.length === 0) {
+          reject(new AggregateErrorImpl([], 'All promises were rejected'));
+          return;
+        }
+        remaining = list.length;
+        for (var i = 0; i < list.length; i++) {
+          (function(idx) {
+            Promise.resolve(list[idx]).then(function(val) {
+              resolve(val);
+            }, function(err) {
+              errors[idx] = err;
+              remaining--;
+              if (remaining === 0) {
+                reject(new AggregateErrorImpl(errors, 'All promises were rejected'));
+              }
+            });
+          })(i);
+        }
+      });
+    };
+  }
+  // Array.prototype.at (ES2022, Chrome 92+)
+  if (!Array.prototype.at) {
+    Array.prototype.at = function(index) {
+      var len = this.length;
+      var relativeIndex = index < 0 ? len + index : index;
+      if (relativeIndex < 0 || relativeIndex >= len) return undefined;
+      return this[relativeIndex];
+    };
+  }
+  // String.prototype.at (ES2022, Chrome 92+)
+  if (!String.prototype.at) {
+    String.prototype.at = function(index) {
+      var len = this.length;
+      var relativeIndex = index < 0 ? len + index : index;
+      if (relativeIndex < 0 || relativeIndex >= len) return undefined;
+      return this.charAt(relativeIndex);
+    };
+  }
+})();
+
+import Vue from 'vue';
+import App from './App.vue';
+import router from './router';
+import store from './store';
+import ModalDialog from './components/ModalDialog.vue';
+import LoadingSkeleton from './components/LoadingSkeleton.vue';
+import ErrorBoundary from './components/ErrorBoundary.vue';
+import '@fortawesome/fontawesome-free/css/all.min.css';
+import './styles/global.scss';
+
+Vue.config.productionTip = false;
+Vue.config.errorHandler = function(err, vm, info) {
+  console.error('[Vue Error]', info, err);
+};
+
+window.onerror = function(msg, url, line, col, error) {
+  console.error('[Global Error]', msg, url, line, col, error);
+};
+
+window.addEventListener('unhandledrejection', function(event) {
+  console.error('[Unhandled Rejection]', event.reason);
+});
+
+Vue.component('ModalDialog', ModalDialog);
+Vue.component('LoadingSkeleton', LoadingSkeleton);
+Vue.component('ErrorBoundary', ErrorBoundary);
+
+var ModalPlugin = {
+  install: function(VueConstructor) {
+    VueConstructor.prototype.$modal = {
+      _instance: null,
+      _setInstance: function(instance) {
+        this._instance = instance;
+      },
+      alert: function(options) {
+        if (this._instance) return this._instance.alert(options);
+        return Promise.resolve(true);
+      },
+      confirm: function(options) {
+        if (this._instance) return this._instance.confirm(options);
+        return Promise.resolve(false);
+      },
+      prompt: function(options) {
+        if (this._instance) return this._instance.prompt(options);
+        return Promise.resolve(null);
+      }
+    };
+  }
+};
+
+Vue.use(ModalPlugin);
+
+router.onError(function(error) {
+  console.error('[Router] Navigation error:', error.message);
+});
+
+var originalPush = router.push;
+router.push = function(location) {
+  return originalPush.call(this, location).catch(function(err) {
+    if (err && err.name !== 'NavigationDuplicated' && err.name !== 'NavigationAborted') {
+      console.error('[Router] Push error:', err);
+    }
+    return Promise.reject(err);
+  });
+};
+
+var originalReplace = router.replace;
+router.replace = function(location) {
+  return originalReplace.call(this, location).catch(function(err) {
+    if (err && err.name !== 'NavigationDuplicated' && err.name !== 'NavigationAborted') {
+      console.error('[Router] Replace error:', err);
+    }
+    return Promise.reject(err);
+  });
+};
+
+new Vue({
+  router: router,
+  store: store,
+  render: function(h) { return h(App); }
+}).$mount('#app');
+
+if (typeof window.__onVueReady === 'function') {
+  window.__onVueReady();
+}

@@ -1,0 +1,820 @@
+<template>
+  <div class="chat-bubble-wrapper">
+    <div v-if="showUnreadDivider" class="unread-divider">
+      <div class="unread-divider-line"></div>
+      <span class="unread-divider-text">{{ unreadCount }} 条未读消息</span>
+      <div class="unread-divider-line"></div>
+    </div>
+    <div v-if="showDateSeparator" class="date-separator">
+      <div class="date-separator-line"></div>
+      <span class="date-separator-text">{{ dateLabel }}</span>
+      <div class="date-separator-line"></div>
+    </div>
+    <div
+      v-if="message.type === 'system'"
+      class="system-message"
+    >{{ message.content }}</div>
+    <div
+      v-else
+      class="chat-bubble"
+      :class="{ 'own-bubble': isOwn, 'recalled-bubble': message.recalled === 1 }"
+      @contextmenu.prevent="onContextMenu"
+      @touchstart="onTouchStart"
+      @touchend="onTouchEnd"
+      @touchmove="onTouchMove"
+    >
+      <div v-if="!isOwn && message.recalled !== 1" class="bubble-sender">{{ message.sender_name }}<span v-if="senderRole === 'admin'" class="admin-badge-inline">管理</span><img v-if="showLevel && senderLevel >= 0" :src="'/resources/public/level/Lv' + senderLevel + '.svg'" class="level-icon-chat" /></div>
+      <div v-if="message.recalled === 1" class="bubble-recalled">该消息已撤回</div>
+      <div v-else-if="message.type === 'community_forward'" class="bubble-content bubble-forward" @click="onForwardClick">
+        <div class="forward-label"><i class="fa-solid fa-share-from-square"></i> 社区帖子 · {{ forwardTypeLabel }}</div>
+        <div class="forward-card">
+          <div v-if="forwardData.title || forwardData.dish_name" class="forward-title">{{ forwardData.title || forwardData.dish_name }}</div>
+          <div v-if="forwardData.canteen" class="forward-meta"><i class="fa-solid fa-utensils"></i> {{ forwardData.canteen }}{{ forwardData.window ? ' · ' + forwardData.window : '' }}</div>
+          <div v-if="forwardData.location" class="forward-meta"><i class="fa-solid fa-location-dot"></i> {{ forwardData.location }}</div>
+          <div class="forward-preview">{{ forwardPreviewText }}</div>
+        </div>
+        <div class="forward-action">点击查看详情 <i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+      <div v-else-if="message.type === 'music_playlist'" class="bubble-content bubble-forward bubble-music" @click="onMusicPlaylistClick">
+        <div class="forward-label"><i class="fa-solid fa-music"></i> 音乐歌单</div>
+        <div class="forward-card forward-card-music">
+          <div class="forward-music-icon"><i class="fa-solid fa-list"></i></div>
+          <div class="forward-music-info">
+            <div class="forward-title">{{ playlistData.playlistName || '歌单' }}</div>
+            <div class="forward-meta"><i class="fa-solid fa-music"></i> {{ playlistData.songCount || 0 }} 首歌曲</div>
+            <div v-if="playlistData.description" class="forward-preview">{{ playlistData.description.substring(0, 60) }}</div>
+          </div>
+        </div>
+        <div class="forward-action">点击打开歌单 <i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+      <div v-else class="bubble-content">
+        <div v-if="message.reply_to" class="reply-quote" @click="onReplyQuoteClick">
+          <div class="reply-quote-name">{{ message.reply_to.user_name }}</div>
+          <div class="reply-quote-preview">{{ message.reply_to.content_preview }}</div>
+        </div>
+        <span v-html="renderContent(message.content)" @click="onContentClick"></span>
+      </div>
+      <div v-if="message.reactions && hasReactions" class="bubble-reactions">
+        <span
+          v-for="reaction in reactionList"
+          :key="reaction.emoji"
+          class="reaction-badge"
+          :class="{ 'reaction-own': reaction.hasOwn }"
+          @click="onReactionClick(reaction.emoji)"
+        >{{ reaction.emoji }} {{ reaction.count }}</span>
+      </div>
+      <div class="bubble-time-row">
+        <span v-if="showTimestamp" class="bubble-time">{{ formatTime(message.created_at) }}</span>
+        <span v-if="isOwn && status === 'sending'" class="status-icon status-sending">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </span>
+        <span v-else-if="isOwn && status === 'sent'" class="status-icon status-sent">
+          <i class="fa-solid fa-check"></i>
+        </span>
+        <span v-else-if="isOwn && status === 'failed'" class="status-icon status-failed">
+          <i class="fa-solid fa-exclamation"></i>
+        </span>
+        <span v-if="isOwn && isPrivate && message.recalled !== 1" class="read-receipt">
+          <span v-if="isRead" class="read-receipt-read">&#10003;&#10003;</span>
+          <span v-else class="read-receipt-unread">&#10003;</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'ChatBubble',
+  props: {
+    message: {
+      type: Object,
+      required: true
+    },
+    isOwn: {
+      type: Boolean,
+      default: false
+    },
+    canRecall: {
+      type: Boolean,
+      default: false
+    },
+    status: {
+      type: String,
+      default: 'sent'
+    },
+    showDateSeparator: {
+      type: Boolean,
+      default: false
+    },
+    dateLabel: {
+      type: String,
+      default: ''
+    },
+    searchTerm: {
+      type: String,
+      default: ''
+    },
+    isPrivate: {
+      type: Boolean,
+      default: false
+    },
+    isRead: {
+      type: Boolean,
+      default: false
+    },
+    showTimestamp: {
+      type: Boolean,
+      default: true
+    },
+    showUnreadDivider: {
+      type: Boolean,
+      default: false
+    },
+    unreadCount: {
+      type: Number,
+      default: 0
+    },
+    senderLevel: {
+      type: Number,
+      default: -1
+    },
+    showLevel: {
+      type: Boolean,
+      default: false
+    },
+    senderRole: {
+      type: String,
+      default: ''
+    },
+    senderTitle: {
+      type: String,
+      default: ''
+    }
+  },
+  data: function() {
+    return {
+      showContextMenu: false,
+      longPressTimer: null,
+      longPressFired: false
+    };
+  },
+  computed: {
+    forwardData: function() {
+      if (this.message.type !== 'community_forward' && this.message.type !== 'music_playlist') return {};
+      try {
+        return JSON.parse(this.message.content);
+      } catch (e) {
+        return {};
+      }
+    },
+    playlistData: function() {
+      if (this.message.type !== 'music_playlist') return {};
+      try {
+        return JSON.parse(this.message.content);
+      } catch (e) {
+        return {};
+      }
+    },
+    forwardTypeLabel: function() {
+      var t = this.forwardData.postType;
+      if (t === 'food') return '美食推荐';
+      if (t === 'hot') return '热事爆料';
+      return '论坛帖子';
+    },
+    forwardPreviewText: function() {
+      var text = this.forwardData.content || this.forwardData.reason || this.forwardData.detail || '';
+      if (!text) return '';
+      return text.length > 60 ? text.substring(0, 60) + '...' : text;
+    },
+    hasReactions: function() {
+      var reactions = this.message.reactions;
+      if (!reactions) return false;
+      var keys = Object.keys(reactions);
+      for (var i = 0; i < keys.length; i++) {
+        if (reactions[keys[i]] && reactions[keys[i]].count > 0) {
+          return true;
+        }
+      }
+      return false;
+    },
+    reactionList: function() {
+      var self = this;
+      var reactions = self.message.reactions;
+      if (!reactions) return [];
+      var result = [];
+      var keys = Object.keys(reactions);
+      for (var i = 0; i < keys.length; i++) {
+        var emoji = keys[i];
+        var data = reactions[emoji];
+        if (data && data.count > 0) {
+          result.push({
+            emoji: emoji,
+            count: data.count,
+            hasOwn: !!(data.users && data.users.indexOf(self.currentUserId) > -1)
+          });
+        }
+      }
+      return result;
+    },
+    currentUserId: function() {
+      var user = this.$store && this.$store.state && this.$store.state.auth && this.$store.state.auth.user;
+      return user ? user.user_id : '';
+    }
+  },
+  mounted: function() {
+    document.addEventListener('click', this.closeContextMenu);
+  },
+  beforeDestroy: function() {
+    document.removeEventListener('click', this.closeContextMenu);
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  },
+  methods: {
+    onContentClick: function(e) {
+      var target = e.target;
+      while (target && target !== e.currentTarget) {
+        if (target.tagName === 'A' && target.getAttribute('data-external') === 'true') {
+          e.preventDefault();
+          var href = target.getAttribute('href');
+          if (href) {
+            this.$router.push('/browser?url=' + encodeURIComponent(href));
+          }
+          return;
+        }
+        target = target.parentNode;
+      }
+    },
+    onForwardClick: function() {
+      if (this.forwardData.postId) {
+        this.$router.push('/community?post=' + this.forwardData.postId);
+      }
+    },
+    onMusicPlaylistClick: function() {
+      var data = this.playlistData;
+      if (data.shareCode) {
+        this.$router.push('/music?shareCode=' + data.shareCode);
+      } else if (data.playlistId) {
+        this.$router.push('/music?playlist=' + data.playlistId);
+      }
+    },
+    formatTime: function(timestamp) {
+      if (!timestamp) return '';
+      var timeStr = String(timestamp);
+      if (timeStr.indexOf('T') === -1) { timeStr = timeStr.replace(' ', 'T'); }
+      if (timeStr.indexOf('Z') === -1 && timeStr.indexOf('+') === -1) { timeStr = timeStr + 'Z'; }
+      var date = new Date(timeStr);
+      if (isNaN(date.getTime())) return '';
+      var now = new Date();
+      var diff = now.getTime() - date.getTime();
+      if (diff < 0) diff = 0;
+      var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var yesterday = new Date(today.getTime() - 86400000);
+      var dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      var hours = date.getHours().toString().padStart(2, '0');
+      var minutes = date.getMinutes().toString().padStart(2, '0');
+      var timeDisplay = hours + ':' + minutes;
+
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+      if (dateDay.getTime() === today.getTime()) return timeDisplay;
+      if (dateDay.getTime() === yesterday.getTime()) return '昨天 ' + timeDisplay;
+      var month = (date.getMonth() + 1).toString().padStart(2, '0');
+      var day = date.getDate().toString().padStart(2, '0');
+      return month + '/' + day + ' ' + timeDisplay;
+    },
+    highlightContent: function(content) {
+      if (!this.searchTerm || !content) return content;
+      var htmlEscaped = content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      var escaped = this.searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var regex = new RegExp('(' + escaped + ')', 'gi');
+      return htmlEscaped.replace(regex, '<mark class="search-highlight">$1</mark>');
+    },
+    renderContent: function(content) {
+      if (!content) return '';
+      // Step 1: Extract URLs and replace with placeholders
+      var urls = [];
+      var text = content.replace(/(https?:\/\/[^\s<>"]+)/g, function(url) {
+        urls.push(url);
+        return '%%URL' + (urls.length - 1) + '%%';
+      });
+      // Step 2: HTML-escape
+      var html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      // Step 3: Apply search highlighting
+      if (this.searchTerm) {
+        var escaped = this.searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var regex = new RegExp('(' + escaped + ')', 'gi');
+        html = html.replace(regex, '<mark class="search-highlight">$1</mark>');
+      }
+      // Step 4: Restore URLs as clickable links
+      for (var i = 0; i < urls.length; i++) {
+        var placeholder = '%%URL' + i + '%%';
+        var url = urls[i];
+        var escapedUrl = url
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        var urlHtml = '<a href="' + escapedUrl + '" class="msg-link" data-external="true">' + escapedUrl + '</a>';
+        html = html.replace(placeholder, urlHtml);
+      }
+      return html;
+    },
+    onContextMenu: function(e) {
+      if (this.message.recalled === 1) return;
+      this.$emit('context-menu', this.message, e);
+    },
+    onTouchStart: function(e) {
+      var self = this;
+      self.longPressFired = false;
+      self.longPressTimer = setTimeout(function() {
+        self.longPressFired = true;
+        self.$emit('context-menu', self.message, {
+          clientX: e.touches[0].clientX,
+          clientY: e.touches[0].clientY,
+          preventDefault: function() {}
+        });
+      }, 600);
+    },
+    onTouchEnd: function() {
+      if (this.longPressTimer) {
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = null;
+      }
+    },
+    onTouchMove: function() {
+      if (this.longPressTimer) {
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = null;
+      }
+    },
+    closeContextMenu: function() {
+      this.showContextMenu = false;
+    },
+    onReplyQuoteClick: function() {
+      var replyTo = this.message.reply_to;
+      if (replyTo && replyTo.message_id) {
+        this.$emit('scroll-to', replyTo.message_id);
+      }
+    },
+    onReactionClick: function(emoji) {
+      this.$emit('toggle-reaction', this.message, emoji);
+    }
+  }
+};
+</script>
+
+<style scoped>
+.chat-bubble-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.date-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 12px;
+  padding: 0 8px;
+}
+
+.date-separator-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.date-separator-text {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.system-message {
+  text-align: center;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-tertiary);
+  padding: 8px 0;
+  margin: 4px 0;
+}
+
+.chat-bubble {
+  max-width: 65%;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.chat-bubble.own-bubble {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-bubble:not(.own-bubble) {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.bubble-sender {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  padding-left: 4px;
+}
+
+.level-icon-chat {
+  height: 14px;
+  width: auto;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.admin-badge-inline {
+  display: inline-block;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  margin-left: 4px;
+  vertical-align: middle;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.bubble-content {
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.own-bubble .bubble-content {
+  background: var(--primary-color);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+
+.chat-bubble:not(.own-bubble) .bubble-content {
+  background: var(--card-bg);
+  color: var(--text-primary);
+  border-bottom-left-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.bubble-forward {
+  cursor: pointer;
+  min-width: 200px;
+  max-width: 300px;
+  padding: 10px 14px;
+}
+
+.bubble-forward:hover {
+  opacity: 0.9;
+}
+
+.forward-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.forward-card {
+  border-left: 3px solid var(--primary-color);
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 0 6px 6px 0;
+}
+
+.own-bubble .forward-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-left-color: rgba(255, 255, 255, 0.6);
+}
+
+.forward-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.forward-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+.forward-meta i {
+  margin-right: 4px;
+  font-size: 11px;
+}
+
+.forward-preview {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+.forward-action {
+  font-size: 12px;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.own-bubble .forward-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.own-bubble .forward-title {
+  color: #fff;
+}
+
+.own-bubble .forward-meta {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.own-bubble .forward-preview {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.own-bubble .forward-action {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.forward-card-music {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.forward-music-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-ai));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.forward-music-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.bubble-music .forward-label {
+  color: var(--accent-ai);
+}
+
+.own-bubble .bubble-music .forward-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.forward-music-icon i {
+  display: block;
+}
+
+/* Reply quote */
+.reply-quote {
+  background: rgba(0, 0, 0, 0.06);
+  border-left: 3px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.own-bubble .reply-quote {
+  background: rgba(255, 255, 255, 0.15);
+  border-left-color: rgba(255, 255, 255, 0.6);
+}
+
+.reply-quote:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.own-bubble .reply-quote:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.reply-quote-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 2px;
+}
+
+.own-bubble .reply-quote-name {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.reply-quote-preview {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.own-bubble .reply-quote-preview {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Reactions */
+.bubble-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+.reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.reaction-badge:hover {
+  background: var(--border-color);
+}
+
+.reaction-badge.reaction-own {
+  background: var(--primary-light);
+  border-color: var(--primary-color);
+}
+
+.bubble-time-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+.bubble-time {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.status-icon {
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status-sending {
+  color: var(--text-tertiary);
+}
+
+.status-sent {
+  color: var(--primary-color);
+}
+
+.status-failed {
+  color: var(--danger-color);
+}
+
+/* Read receipt */
+.read-receipt {
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.read-receipt-read {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.read-receipt-unread {
+  color: var(--text-tertiary);
+}
+
+.chat-bubble >>> .search-highlight {
+  background: rgba(255, 213, 0, 0.4);
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.chat-bubble >>> .msg-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.own-bubble >>> .msg-link {
+  color: #fff;
+}
+
+/* Unread divider */
+.unread-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 0 8px;
+}
+
+.unread-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--danger-color);
+  opacity: 0.4;
+}
+
+.unread-divider-text {
+  font-size: 12px;
+  color: var(--danger-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.bubble-recalled {
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-tertiary);
+  background: var(--bg-color);
+}
+
+.recalled-bubble.own-bubble .bubble-recalled {
+  border-bottom-right-radius: 6px;
+}
+
+.recalled-bubble:not(.own-bubble) .bubble-recalled {
+  border-bottom-left-radius: 6px;
+}
+
+.bubble-context-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  padding: 4px 0;
+  z-index: 100;
+  margin-bottom: 4px;
+  min-width: 80px;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--danger-color);
+  text-align: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-color);
+}
+</style>

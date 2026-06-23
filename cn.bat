@@ -1,0 +1,289 @@
+@echo off
+chcp 65001 >nul 2>&1
+title ClassNet Manager
+cd /d "%~dp0"
+
+if "%1"=="" goto menu
+if /i "%1"=="start" goto start
+if /i "%1"=="stop" goto stop
+if /i "%1"=="restart" goto restart
+if /i "%1"=="status" goto status
+if /i "%1"=="logs" goto logs
+if /i "%1"=="build" goto build
+if /i "%1"=="dev" goto dev
+if /i "%1"=="kill" goto kill
+if /i "%1"=="startup" goto startup
+if /i "%1"=="reset" goto reset
+if /i "%1"=="monit" goto monit
+if /i "%1"=="flush" goto flush
+if /i "%1"=="describe" goto describe
+if /i "%1"=="direct" goto direct
+goto menu
+
+:menu
+echo.
+echo  ========================================
+echo        ClassNet Manager (PM2)
+echo  ========================================
+echo   1. Start   (PM2 background)
+echo   2. Stop
+echo   3. Restart
+echo   4. Status
+echo   5. Logs
+echo   6. Build Frontend
+echo   7. Dev Mode
+echo   8. Force Kill and Restart
+echo   9. Setup Auto-Start on Boot
+echo   D. Direct Start (no PM2)
+echo   M. Monitor (CPU/Memory)
+echo   F. Flush Logs
+echo   I. Process Info
+echo   R. Full Reset (delete + recreate)
+echo   0. Exit
+echo  ========================================
+echo.
+set /p choice=Select: 
+
+if "%choice%"=="1" goto start
+if "%choice%"=="2" goto stop
+if "%choice%"=="3" goto restart
+if "%choice%"=="4" goto status
+if "%choice%"=="5" goto logs
+if "%choice%"=="6" goto build
+if "%choice%"=="7" goto dev
+if "%choice%"=="8" goto kill
+if "%choice%"=="9" goto startup
+if /i "%choice%"=="M" goto monit
+if /i "%choice%"=="F" goto flush
+if /i "%choice%"=="I" goto describe
+if /i "%choice%"=="D" goto direct
+if /i "%choice%"=="R" goto reset
+if "%choice%"=="0" goto end
+goto menu
+
+:kill_ports
+echo [ClassNet] Checking ports...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9000 " ^| findstr "LISTENING" 2^>nul') do (
+    echo   Killing port 9000 PID %%a
+    taskkill /PID %%a /F >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":10001 " ^| findstr "LISTENING" 2^>nul') do (
+    echo   Killing port 10001 PID %%a
+    taskkill /PID %%a /F >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":10011 " ^| findstr "LISTENING" 2^>nul') do (
+    echo   Killing port 10011 PID %%a
+    taskkill /PID %%a /F >nul 2>&1
+)
+goto :eof
+
+:ensure_pm2
+call pm2 ping >nul 2>&1
+if errorlevel 1 (
+    echo [ClassNet] PM2 daemon not running, cleaning up...
+    taskkill /f /im "PM2.exe" >nul 2>&1
+    taskkill /f /im "node.exe" /fi "WINDOWTITLE eq PM2*" >nul 2>&1
+    timeout /t 2 /nobreak >nul
+    call pm2 ping >nul 2>&1
+    if errorlevel 1 (
+        echo [ClassNet] ERROR: Cannot start PM2 daemon.
+        echo [ClassNet] Try running: npm install -g pm2@latest
+        if "%1"=="" pause
+        exit /b 1
+    )
+)
+goto :eof
+
+:start
+echo [ClassNet] Starting production...
+call :kill_ports
+timeout /t 2 /nobreak >nul
+call :ensure_pm2
+if errorlevel 1 goto end
+echo [ClassNet] Starting PM2...
+call pm2 start ecosystem.config.js
+call pm2 save
+echo.
+call pm2 status
+echo.
+echo [ClassNet] Started! Running in background.
+if "%1"=="start" goto end
+pause
+goto menu
+
+:stop
+echo [ClassNet] Stopping production...
+call :ensure_pm2
+call pm2 stop classnet-server
+call pm2 save
+echo [ClassNet] Stopped!
+if "%1"=="stop" goto end
+pause
+goto menu
+
+:restart
+echo [ClassNet] Restarting production...
+call :ensure_pm2
+call pm2 restart classnet-server
+call pm2 save
+echo [ClassNet] Restarted!
+if "%1"=="restart" goto end
+pause
+goto menu
+
+:status
+call :ensure_pm2
+call pm2 status
+if "%1"=="status" goto end
+pause
+goto menu
+
+:logs
+echo [ClassNet] Logs (Ctrl+C to exit):
+call :ensure_pm2
+call pm2 logs classnet-server --lines 100
+if "%1"=="logs" goto end
+pause
+goto menu
+
+:build
+echo [ClassNet] Building frontend...
+cd client
+call npm run build
+if errorlevel 1 (
+    echo [ClassNet] Build FAILED!
+    cd ..
+    if "%1"=="build" goto end
+    pause
+    goto menu
+)
+cd ..
+echo [ClassNet] Build complete! Run: cn restart
+if "%1"=="build" goto end
+pause
+goto menu
+
+:dev
+echo [ClassNet] Stopping production and entering dev mode...
+call :ensure_pm2
+call pm2 stop classnet-server >nul 2>&1
+call pm2 save
+call :kill_ports
+timeout /t 1 /nobreak >nul
+echo [ClassNet] Starting dev mode...
+cd server
+start cmd /k "title ClassNet Dev Server && npm run dev"
+cd ..
+cd client
+start cmd /k "title ClassNet Dev Client && npm run dev"
+cd ..
+echo [ClassNet] Dev mode started in new windows!
+if "%1"=="dev" goto end
+pause
+goto menu
+
+:kill
+echo [ClassNet] Force killing and restarting...
+call :ensure_pm2
+call pm2 stop classnet-server >nul 2>&1
+call pm2 delete classnet-server >nul 2>&1
+call :kill_ports
+timeout /t 3 /nobreak >nul
+call :ensure_pm2
+echo [ClassNet] Restarting...
+call pm2 start ecosystem.config.js
+call pm2 save
+echo [ClassNet] Restarted!
+if "%1"=="kill" goto end
+pause
+goto menu
+
+:startup
+echo [ClassNet] Setting up PM2 auto-start on Windows boot...
+call :ensure_pm2
+echo [ClassNet] Checking pm2-windows-startup...
+call npm list -g pm2-windows-startup >nul 2>&1
+if errorlevel 1 (
+    echo [ClassNet] Installing pm2-windows-startup...
+    call npm install -g pm2-windows-startup
+    if errorlevel 1 (
+        echo [ClassNet] ERROR: Failed to install pm2-windows-startup
+        pause
+        goto menu
+    )
+)
+echo [ClassNet] Configuring Windows startup task...
+call pm2-startup install
+echo [ClassNet] Saving current PM2 process list...
+call pm2 save
+echo.
+echo [ClassNet] Auto-start configured!
+echo [ClassNet] PM2 will automatically restart classnet-server on boot.
+echo.
+echo   Make sure the following are set correctly:
+echo   1. Run "cn restart" first to apply latest config
+echo   2. Run "cn status" to verify the server is online
+echo   3. Reboot to test auto-start
+echo.
+if "%1"=="startup" goto end
+pause
+goto menu
+
+:monit
+call :ensure_pm2
+echo [ClassNet] Opening PM2 monitor... (Ctrl+C to exit)
+call pm2 monit
+goto menu
+
+:flush
+echo [ClassNet] Flushing PM2 logs...
+call :ensure_pm2
+call pm2 flush
+echo [ClassNet] Logs flushed!
+if "%1"=="flush" goto end
+pause
+goto menu
+
+:describe
+call :ensure_pm2
+call pm2 describe classnet-server
+if "%1"=="describe" goto end
+pause
+goto menu
+
+:direct
+echo [ClassNet] Starting production (direct mode - no PM2)...
+call :kill_ports
+timeout /t 2 /nobreak >nul
+cd server
+start "ClassNet Server" /MIN cmd /c "node src\app.js"
+cd ..
+echo.
+echo [ClassNet] Server starting on ports 9000/10001/10011...
+echo [ClassNet] Check the minimized window for logs.
+echo [ClassNet] Use "cn status" or netstat -ano ^| findstr ":9000" to verify.
+if "%1"=="direct" goto end
+pause
+goto menu
+
+:reset
+echo [ClassNet] Full reset...
+call :ensure_pm2
+echo [ClassNet] Stopping and deleting all PM2 processes...
+call pm2 stop all >nul 2>&1
+call pm2 delete all >nul 2>&1
+call :kill_ports
+timeout /t 3 /nobreak >nul
+echo [ClassNet] Flushing logs...
+call pm2 flush >nul 2>&1
+call :ensure_pm2
+echo [ClassNet] Starting fresh...
+call pm2 start ecosystem.config.js
+call pm2 save
+call pm2 status
+echo [ClassNet] Full reset complete!
+if "%1"=="reset" goto end
+pause
+goto menu
+
+:end
