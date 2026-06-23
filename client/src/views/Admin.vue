@@ -4085,7 +4085,7 @@ export default {
   color: #c9d1d9;
   white-space: pre-wrap;
   word-break: break-all;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 0.5px solid rgba(255,255,255,0.04);
   padding: 2px 0;
 }
 .pm2-log-error { color: var(--danger-color); }
@@ -4720,7 +4720,7 @@ export default {
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+    border-bottom: 0.5px solid rgba(128, 128, 128, 0.1);
     font-size: var(--font-size-sm);
   }
 

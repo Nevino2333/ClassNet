@@ -2963,7 +2963,7 @@ export default {
 }
 
 .sidebar-tab:active {
-  opacity: 0.7;
+  background: var(--border-color);
 }
 
 .sidebar-list {
@@ -3703,7 +3703,7 @@ export default {
 }
 
 .member-select-item:active {
-  opacity: 0.7;
+  background: var(--border-color);
 }
 
 .member-select-item input[type="checkbox"] {
@@ -4356,6 +4356,7 @@ export default {
 }
 
 .search-close-btn:active {
+  transform: scale(0.92);
   opacity: 0.7;
 }
 

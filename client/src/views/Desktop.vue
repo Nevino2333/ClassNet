@@ -757,7 +757,7 @@ export default {
   -webkit-justify-content: space-between;
   justify-content: space-between;
   padding: 10px 16px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.06);
 }
 
 .announcement-float-indicator {

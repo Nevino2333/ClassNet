@@ -2332,7 +2332,7 @@ export default {
 .post-poll { margin: 10px 0; }
 .poll-option { position: relative; padding: 10px 14px; margin-bottom: 8px; border-radius: var(--radius-md); background: var(--bg-color); cursor: pointer; overflow: hidden; transition: all 0.25s var(--ease-standard); border: 2px solid var(--border-color); display: flex; align-items: center; }
 .poll-option:hover:not(.voted) { border-color: var(--primary-color); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-.poll-option:active:not(.voted) { transform: translateY(0); }
+.poll-option:active:not(.voted) { transform: scale(0.92); opacity: 0.7; }
 .poll-option.voted { cursor: default; }
 .poll-option.selected { border-color: var(--primary-color); background: rgba(var(--primary-rgb),0.04); }
 .poll-option-bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(var(--primary-rgb),0.08); border-radius: var(--radius-md); transition: width 0.6s cubic-bezier(0, 0, 0.2, 1); pointer-events: none; }
@@ -2838,7 +2838,7 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
   -webkit-user-select: none;
   user-select: none;
 }

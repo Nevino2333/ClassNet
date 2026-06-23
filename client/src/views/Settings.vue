@@ -1235,6 +1235,7 @@ export default {
 }
 
 .toggle-btn:active {
+  transform: scale(0.92);
   opacity: 0.7;
 }
 

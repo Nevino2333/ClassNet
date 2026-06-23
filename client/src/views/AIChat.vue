@@ -1917,7 +1917,7 @@ export default {
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
-  border-top: 1px solid rgba(245, 158, 11, 0.15);
+  border-top: 0.5px solid rgba(245, 158, 11, 0.15);
   max-height: 300px;
   overflow-y: auto;
 }
@@ -2333,7 +2333,7 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
   -webkit-user-select: none;
   user-select: none;
 }

@@ -392,7 +392,8 @@ export default {
 }
 
 .music-ctrl-btn:active {
-  transform: scale(0.88);
+  transform: scale(0.92);
+  opacity: 0.7;
 }
 
 .music-ctrl-play {
