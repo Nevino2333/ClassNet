@@ -1662,6 +1662,79 @@ router.post('/weather-alert/broadcast', function(req, res) {
   }
 });
 
+// ===== 应用管控 =====
+// 管理员/班干控制每个桌面应用的启用与禁用，禁用的应用不在用户桌面显示
+
+// 桌面应用元数据（与前端 Desktop.vue dockApps 保持一致）
+var DESKTOP_APPS = [
+  { name: 'chat', label: '聊天', icon: 'fa-solid fa-comments', color: '#007AFF' },
+  { name: 'community', label: '社区', icon: 'fa-solid fa-people-group', color: '#FF9500' },
+  { name: 'ai-chat', label: 'AI', icon: 'fa-solid fa-robot', color: '#AF52DE' },
+  { name: 'notes', label: '笔记', icon: 'fa-solid fa-note-sticky', color: '#FFCC00' },
+  { name: 'resource', label: '资源', icon: 'fa-solid fa-folder', color: '#5856D6' },
+  { name: 'weather', label: '天气', icon: 'fa-solid fa-cloud-sun-rain', color: '#5AC8FA' },
+  { name: 'music', label: '音乐', icon: 'fa-solid fa-music', color: '#FF2D55' },
+  { name: 'settings', label: '设置', icon: 'fa-solid fa-gear', color: '#8E8E93' }
+];
+
+// GET /api/admin/app-control - 获取所有应用及启用状态
+router.get('/app-control', auth.requirePermission('manage_app_control'), function(req, res) {
+  try {
+    var rows = db.prepare('SELECT app_name, enabled, updated_by, updated_at FROM app_control').all();
+    var statusMap = {};
+    for (var i = 0; i < rows.length; i++) {
+      statusMap[rows[i].app_name] = {
+        enabled: rows[i].enabled ? true : false,
+        updated_by: rows[i].updated_by || '',
+        updated_at: rows[i].updated_at || ''
+      };
+    }
+    var apps = DESKTOP_APPS.map(function(app) {
+      var status = statusMap[app.name] || { enabled: true, updated_by: '', updated_at: '' };
+      return {
+        name: app.name,
+        label: app.label,
+        icon: app.icon,
+        color: app.color,
+        enabled: status.enabled,
+        updated_by: status.updated_by,
+        updated_at: status.updated_at
+      };
+    });
+    res.json({ code: 200, data: { apps: apps } });
+  } catch (e) {
+    console.error('[Admin] Get app-control failed:', e.message);
+    res.status(500).json({ code: 500, message: '获取应用管控状态失败' });
+  }
+});
+
+// PUT /api/admin/app-control/:appName - 更新应用启用状态
+router.put('/app-control/:appName', auth.requirePermission('manage_app_control'), function(req, res) {
+  var appName = req.params.appName;
+  // 验证应用名合法
+  var validApp = null;
+  for (var i = 0; i < DESKTOP_APPS.length; i++) {
+    if (DESKTOP_APPS[i].name === appName) { validApp = DESKTOP_APPS[i]; break; }
+  }
+  if (!validApp) {
+    return res.status(400).json({ code: 400, message: '无效的应用名称' });
+  }
+  // settings 应用不允许禁用（确保用户始终能访问设置）
+  if (appName === 'settings' && !req.body.enabled) {
+    return res.status(400).json({ code: 400, message: '设置应用不允许禁用' });
+  }
+  var enabled = req.body.enabled ? 1 : 0;
+  try {
+    db.prepare("INSERT INTO app_control (app_name, enabled, updated_by, updated_at) VALUES (?, ?, ?, datetime('now')) ON CONFLICT(app_name) DO UPDATE SET enabled = excluded.enabled, updated_by = excluded.updated_by, updated_at = excluded.updated_at")
+      .run(appName, enabled, req.user.user_id || '');
+    logAction(req.user.user_id, enabled ? 'enable_app' : 'disable_app', appName, validApp.label);
+    res.json({ code: 200, message: enabled ? '应用已启用' : '应用已禁用', data: { app_name: appName, enabled: enabled ? true : false } });
+  } catch (e) {
+    console.error('[Admin] Update app-control failed:', e.message);
+    res.status(500).json({ code: 500, message: '更新应用状态失败' });
+  }
+});
+
 // ===== 远程管理代理 =====
 // 班管通过中继通道管理本班在其他服务器上的数据
 

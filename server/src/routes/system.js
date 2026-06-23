@@ -146,4 +146,24 @@ router.post('/set-version', function(req, res) {
   res.json({ code: 200, message: '版本信息已更新', data: versionData });
 });
 
+// GET /api/system/app-control - 获取启用的应用列表（需登录）
+// 返回启用的应用名数组，桌面据此过滤禁用应用
+router.get('/app-control', function(req, res) {
+  var auth = require('../middleware/auth');
+  auth.requireAuth(req, res, function() {
+    try {
+      var db = require('../utils/db');
+      var rows = db.prepare('SELECT app_name, enabled FROM app_control').all();
+      var enabledApps = [];
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].enabled) enabledApps.push(rows[i].app_name);
+      }
+      res.json({ code: 200, data: { enabled_apps: enabledApps } });
+    } catch (e) {
+      // 数据库异常时返回全部启用（降级处理，不影响用户使用）
+      res.json({ code: 200, data: { enabled_apps: ['chat', 'community', 'ai-chat', 'notes', 'resource', 'weather', 'music', 'settings'] } });
+    }
+  });
+});
+
 module.exports = router;

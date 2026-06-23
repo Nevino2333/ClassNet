@@ -66,7 +66,7 @@
 
     <div class="dock-bar">
       <div
-        v-for="app in dockApps"
+        v-for="app in visibleDockApps"
         :key="app.name"
         class="dock-item"
         :class="{ 'dock-launching': launchingApp === app.name }"
@@ -140,7 +140,8 @@ export default {
         { name: 'weather', label: '天气', icon: '/resources/public/icons/Weather.svg', color: '#5AC8FA', route: '/weather' },
         { name: 'music', label: '音乐', icon: '/resources/public/icons/Music.svg', color: '#FF2D55', route: '/music' },
         { name: 'settings', label: '设置', icon: '/resources/public/icons/Settings.svg', color: '#8E8E93', route: '/settings' }
-      ]
+      ],
+      enabledApps: null  // null=未加载，数组=已加载的启用应用名列表
     };
   },
   computed: {
@@ -190,6 +191,15 @@ export default {
       }
       return badges;
     },
+    // 根据后端应用管控状态过滤出启用的应用
+    visibleDockApps: function() {
+      var self = this;
+      // 未加载时显示全部（避免闪烁），加载后过滤
+      if (self.enabledApps === null) return self.dockApps;
+      return self.dockApps.filter(function(app) {
+        return self.enabledApps.indexOf(app.name) !== -1;
+      });
+    },
     hasUnreadAnnouncements: function() {
       return this.unreadAnnouncements.length > 0;
     },
@@ -206,6 +216,7 @@ export default {
       self.playVideoWallpaper();
     });
     self.loadUnreadAnnouncements();
+    self.loadEnabledApps();
   },
   beforeDestroy: function() {
     if (this.performanceCheckTimer) {
@@ -429,6 +440,17 @@ export default {
         }
       }).catch(function() {
         self.unreadAnnouncements = [];
+      });
+    },
+    // 加载后端应用管控状态，过滤桌面禁用的应用
+    loadEnabledApps: function() {
+      var self = this;
+      api.get('/system/app-control').then(function(response) {
+        var data = response.data.data || {};
+        self.enabledApps = data.enabled_apps || [];
+      }).catch(function() {
+        // 降级：全部启用
+        self.enabledApps = self.dockApps.map(function(app) { return app.name; });
       });
     },
     dismissAnnouncement: function() {

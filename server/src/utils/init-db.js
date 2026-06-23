@@ -663,6 +663,22 @@ function initDatabase() {
 
   db.prepare('INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)').run('server_mode', 'single');
 
+  // 应用管控表 — 管理员/班干控制每个应用的启用与禁用
+  db.exec([
+    'CREATE TABLE IF NOT EXISTS app_control (',
+    '  app_name TEXT PRIMARY KEY,',
+    '  enabled INTEGER DEFAULT 1,',
+    '  updated_by TEXT DEFAULT \'\',',
+    '  updated_at TEXT DEFAULT (datetime(\'now\'))',
+    ')'
+  ].join('\n'));
+  // 初始化 8 个桌面应用的默认启用记录
+  var defaultApps = ['chat', 'community', 'ai-chat', 'notes', 'resource', 'weather', 'music', 'settings'];
+  var initAppStmt = db.prepare("INSERT OR IGNORE INTO app_control (app_name, enabled) VALUES (?, 1)");
+  for (var di = 0; di < defaultApps.length; di++) {
+    initAppStmt.run(defaultApps[di]);
+  }
+
   var watermarkTypes = [
     { type: 'chat_messages', query: 'SELECT MAX(id) as max_id FROM chat_messages' },
     { type: 'private_messages', query: 'SELECT MAX(id) as max_id FROM private_messages' },
