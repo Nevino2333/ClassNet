@@ -295,6 +295,11 @@ function getActiveCount() {
   }
 })();
 
+// 获取任务状态（供路由查询 ffmpeg 是否已退出）
+function getTask(hash) {
+  return _tasks[hash] || null;
+}
+
 module.exports = {
   CACHE_DIR: CACHE_DIR,
   MAX_CONCURRENT: MAX_CONCURRENT,
@@ -302,6 +307,7 @@ module.exports = {
   start: start,
   touch: touch,
   waitForReady: waitForReady,
+  getTask: getTask,
   get activeCount() {
     return getActiveCount();
   }

@@ -186,36 +186,55 @@ router.get('/stream', async function(req, res) {
     return res.status(500).json({ code: 500, message: '转码启动失败' });
   }
 
-  // 禁止客户端缓存（转码过程中文件持续增长）
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  // 转码过程中文件持续增长 → 不设 Content-Length，用轮询流式推送
+  res.set('Cache-Control', 'no-store');
   res.set('Access-Control-Allow-Origin', '*');
-  res.set('Accept-Ranges', 'bytes');
   res.set('Content-Type', 'video/mp4');
 
-  // Range 请求支持（视频进度条拖动）
-  var stat = fs.statSync(mp4Path);
-  var fileSize = stat.size;
-  var range = req.headers.range;
+  var fd = fs.openSync(mp4Path, 'r');
+  var readPos = 0;
+  var ended = false;
 
-  if (range) {
-    var parts = range.replace(/bytes=/, '').split('-');
-    var start = parseInt(parts[0], 10);
-    var end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    if (start >= fileSize) {
-      res.status(416).set('Content-Range', 'bytes */' + fileSize).end();
+  // 清理：请求断开时停止
+  req.on('close', function() {
+    ended = true;
+    try { fs.closeSync(fd); } catch (e) {}
+    streamTranscoder.touch(hash);
+  });
+
+  // 轮询推送新数据
+  function pushData() {
+    if (ended) return;
+    try {
+      var stat = fs.fstatSync(fd);
+      var available = stat.size;
+      if (available > readPos) {
+        var buf = Buffer.alloc(available - readPos);
+        var bytesRead = fs.readSync(fd, buf, 0, buf.length, readPos);
+        if (bytesRead > 0) {
+          res.write(buf.slice(0, bytesRead));
+          readPos += bytesRead;
+        }
+      }
+    } catch (e) {
+      ended = true;
+      try { fs.closeSync(fd); } catch (e2) {}
+      res.end();
       return;
     }
-    var chunkSize = end - start + 1;
-    res.status(206);
-    res.set('Content-Range', 'bytes ' + start + '-' + end + '/' + fileSize);
-    res.set('Content-Length', chunkSize);
-    var stream = fs.createReadStream(mp4Path, { start: start, end: end });
-    stream.pipe(res);
-  } else {
-    res.set('Content-Length', fileSize);
-    var fullStream = fs.createReadStream(mp4Path);
-    fullStream.pipe(res);
+    // 检查 ffmpeg 是否已退出
+    var task = streamTranscoder.getTask(hash);
+    var ffDone = task ? (task._exitCode !== null && task._exitCode !== undefined) : false;
+    if (ffDone && readPos >= (fs.fstatSync(fd).size || 0)) {
+      ended = true;
+      try { fs.closeSync(fd); } catch (e) {}
+      res.end();
+      return;
+    }
+    setTimeout(pushData, 250);
   }
+
+  pushData();
 });
 
 router.get('/', function(req, res) {
