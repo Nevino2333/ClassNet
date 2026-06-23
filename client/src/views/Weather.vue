@@ -421,7 +421,7 @@ export default {
 .nav-btn:hover { background: rgba(255,255,255,0.15); }
 .nav-btn:disabled { opacity: 0.4; }
 .nav-btn:active { transform: scale(0.92); opacity: 0.7; }
-.spin { animation: spin 0.8s linear infinite; }
+.spin { animation: spin 0.8s var(--ease-standard) infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .loading-state {
@@ -522,14 +522,14 @@ export default {
 .cards-grid {
   display: grid;
   grid-template-columns: 0.7fr 1.3fr;
-  gap: 5px;
+  gap: 8px;
   overflow: hidden;
 }
 
 .left-col {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
 }
@@ -537,20 +537,21 @@ export default {
 .right-col {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
 }
 
 .card {
-  background: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.1);
   backdrop-filter: var(--glass-blur-overlay);
   -webkit-backdrop-filter: var(--glass-blur-overlay);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 0.5px solid rgba(255,255,255,0.12);
   border-radius: var(--radius-lg);
-  padding: 8px 10px;
+  padding: 12px 14px;
   min-width: 0;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .card-label {
@@ -594,9 +595,9 @@ export default {
 .daily-item {
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
 }
 .daily-item:last-child { border-bottom: none; }
 .d-day { width: 26px; font-size: var(--font-size-caption2); font-weight: 400; flex-shrink: 0; }
@@ -625,23 +626,24 @@ export default {
 }
 
 .air-card, .life-card {
-  background: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.1);
   backdrop-filter: var(--glass-blur-overlay);
   -webkit-backdrop-filter: var(--glass-blur-overlay);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 0.5px solid rgba(255,255,255,0.12);
   border-radius: var(--radius-lg);
-  padding: 6px 10px;
+  padding: 12px 14px;
   min-width: 0;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .warning-card-wrap {
-  background: rgba(var(--danger-rgb), 0.08);
-  border: 1px solid rgba(var(--danger-rgb), 0.15);
+  background: rgba(var(--danger-rgb), 0.12);
+  border: 0.5px solid rgba(var(--danger-rgb), 0.2);
 }
 .warning-card-wrap.no-warning {
-  background: rgba(0,0,0,0.2);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.1);
+  border: 0.5px solid rgba(255,255,255,0.12);
   flex: 1;
 }
 
@@ -670,20 +672,20 @@ export default {
   .hero-temp { font-size: 80px; letter-spacing: -4px; }
   .hero-range { font-size: var(--font-size-caption); margin-top: 5px; }
   .hero-condition { font-size: var(--font-size-sm); margin-top: 4px; }
-  .card { padding: 5px 7px; border-radius: var(--radius-md); min-width: 0; overflow: hidden; }
+  .card { padding: 8px 10px; border-radius: var(--radius-md); min-width: 0; overflow: hidden; }
   .card-label { font-size: var(--font-size-caption2); margin-bottom: 2px; }
-  .cards-grid { gap: 4px; }
-  .left-col { gap: 4px; min-width: 0; overflow: hidden; }
-  .right-col { gap: 4px; min-width: 0; overflow: hidden; }
+  .cards-grid { gap: 6px; }
+  .left-col { gap: 6px; min-width: 0; overflow: hidden; }
+  .right-col { gap: 6px; min-width: 0; overflow: hidden; }
   .hourly-item { width: 38px; padding: 2px 1px; gap: 1px; }
   .h-time { font-size: var(--font-size-caption2); }
   .h-temp { font-size: var(--font-size-caption2); }
-  .daily-item { padding: 1px 0; gap: 2px; }
+  .daily-item { padding: 2px 0; gap: 3px; }
   .d-day { width: 20px; font-size: var(--font-size-caption2); }
   .d-lo { width: 15px; font-size: var(--font-size-caption2); }
   .d-hi { width: 17px; font-size: var(--font-size-caption2); }
   .daily-card { padding: 4px 6px; }
-  .air-card, .life-card { padding: 4px 7px; border-radius: var(--radius-md); min-width: 0; overflow: hidden; }
+  .air-card, .life-card { padding: 8px 10px; border-radius: var(--radius-md); min-width: 0; overflow: hidden; }
 }
 
 @media (max-width: 700px) {

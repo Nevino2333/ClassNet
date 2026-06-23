@@ -99,7 +99,7 @@ export default {
 
 .warning-item {
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
 }
 .warning-item:last-child { border-bottom: none; }
 

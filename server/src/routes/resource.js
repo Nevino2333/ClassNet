@@ -163,22 +163,21 @@ router.get('/stream', function(req, res) {
     });
   }
 
+  var hash, cacheDir;
   try {
     var result = streamTranscoder.start(fullPath);
-    // 等待 MP4 有足够数据可流式播放（至少 256KB，moov atom 已写入）
-    var ready = streamTranscoder.waitForReady(result.hash, 262144, 60000);
+    hash = result.hash;
+    cacheDir = path.join(streamTranscoder.CACHE_DIR, hash);
+    // 等待 HLS 数据就绪（m3u8 + 至少一个 ts 分片）
+    var ready = streamTranscoder.waitForReady(hash, 0, 60000);
     if (!ready) {
       return res.status(500).json({ code: 500, message: '转码超时，请重试' });
     }
-    streamTranscoder.touch(result.hash);
+    streamTranscoder.touch(hash);
   } catch (e) {
     if (e.statusCode === 503) {
       res.set('Retry-After', String(e.retryAfter || 3));
-      return res.status(503).json({
-        code: 503,
-        message: e.message,
-        retryAfter: e.retryAfter || 3
-      });
+      return res.status(503).json({ code: 503, message: e.message, retryAfter: e.retryAfter || 3 });
     }
     if (e.statusCode === 404) {
       return res.status(404).json({ code: 404, message: e.message });
@@ -187,40 +186,46 @@ router.get('/stream', function(req, res) {
     return res.status(500).json({ code: 500, message: '转码启动失败' });
   }
 
-  var mp4Path = result.outputPath;
+  // 读取 m3u8 播放列表，将分片路径改写为绝对 URL
+  var m3u8Path = path.join(cacheDir, 'index.m3u8');
+  var m3u8Content = fs.readFileSync(m3u8Path, 'utf-8');
+  var segBase = '/api/resources/stream/seg?hash=' + hash + '&file=';
+  m3u8Content = m3u8Content.replace(/^segment_(\d+)\.ts$/gm, segBase + 'segment_$1.ts');
 
-  // 禁止客户端缓存
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.set('Content-Type', 'video/mp4');
+  res.set('Cache-Control', 'no-store');
   res.set('Access-Control-Allow-Origin', '*');
-  res.set('Accept-Ranges', 'bytes');
+  res.set('Content-Type', 'application/vnd.apple.mpegurl');
+  res.send(m3u8Content);
+});
 
-  // 支持 Range 请求（视频拖动）
-  var stat = fs.statSync(mp4Path);
-  var fileSize = stat.size;
-  var range = req.headers.range;
+// HLS 分片文件路由
+router.get('/stream/seg', function(req, res) {
+  var hash = req.query.hash;
+  var file = req.query.file;
 
-  if (range) {
-    var parts = range.replace(/bytes=/, '').split('-');
-    var start = parseInt(parts[0], 10);
-    var end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    if (start >= fileSize) {
-      res.status(416).set('Content-Range', 'bytes */' + fileSize).end();
-      return;
-    }
-    var chunkSize = end - start + 1;
-    res.status(206);
-    res.set('Content-Range', 'bytes ' + start + '-' + end + '/' + fileSize);
-    res.set('Content-Length', chunkSize);
-    var stream = fs.createReadStream(mp4Path, { start: start, end: end });
-    stream.pipe(res);
-  } else {
-    res.set('Content-Length', fileSize);
-    var fullStream = fs.createReadStream(mp4Path);
-    fullStream.pipe(res);
+  if (!hash || !file) {
+    return res.status(400).json({ code: 400, message: '参数不完整' });
   }
+
+  // 安全检查：hash 只能包含十六进制字符
+  if (!/^[a-f0-9]{1,32}$/.test(hash)) {
+    return res.status(403).json({ code: 403, message: '非法参数' });
+  }
+  // file 只能包含 segment_NNNNN.ts 格式
+  if (!/^segment_\d{5}\.ts$/.test(file)) {
+    return res.status(403).json({ code: 403, message: '非法参数' });
+  }
+
+  var segPath = path.join(streamTranscoder.CACHE_DIR, hash, file);
+  if (!fs.existsSync(segPath)) {
+    return res.status(404).json({ code: 404, message: '分片不存在或已过期' });
+  }
+
+  streamTranscoder.touch(hash);
+  res.set('Cache-Control', 'no-store');
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Content-Type', 'video/mp2t');
+  res.sendFile(segPath);
 });
 
 router.get('/', function(req, res) {

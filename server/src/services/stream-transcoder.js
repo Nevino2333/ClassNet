@@ -154,15 +154,20 @@ function start(filePath) {
   var cacheDir = path.join(CACHE_DIR, hash);
   _ensureDir(cacheDir);
 
-  var outputFile = path.join(cacheDir, 'output.mp4');
+  // HLS 输出：m3u8 播放列表 + ts 分片
+  var outputFile = path.join(cacheDir, 'index.m3u8');
 
-  // 启动 ffmpeg
+  // 启动 ffmpeg — 转码为 HLS 流
   var args = [
     '-i', fullPath,
     '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
     '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
-    '-movflags', 'frag_keyframe+empty_moov+faststart',
-    '-f', 'mp4', '-y',
+    '-f', 'hls',
+    '-hls_time', '10',          // 每个 ts 分片 10 秒
+    '-hls_list_size', '0',      // 列出全部分片
+    '-hls_segment_filename', path.join(cacheDir, 'segment_%05d.ts'),
+    '-hls_flags', 'delete_segments+append_list',
+    '-y',
     outputFile
   ];
 
@@ -216,34 +221,47 @@ function start(filePath) {
   return { hash: hash, outputPath: outputFile };
 }
 
-// 等待 MP4 文件有足够数据可用（frag_keyframe+empty_moov 使得文件在写出时即可流式读取）
-// 返回 true 表示文件存在且大小 > minSize 字节
+// 等待 HLS 数据可用（m3u8 播放列表 + 至少一个 ts 分片已写入）
+// 返回 true 表示 HLS 流可以开始播放
 function waitForReady(hash, minSize, waitMs) {
   var maxWait = waitMs || 30000;
   var task = _tasks[hash];
 
-  // 任务不存在 → 不等待
   if (!task) return false;
+  var m3u8Path = task.outputPath;
+  if (!m3u8Path) return false;
 
-  var filePath = task.outputPath;
-  if (!filePath) return false;
+  // 检查 m3u8 是否存在且有内容
+  var hasM3u8 = function() {
+    return fs.existsSync(m3u8Path) && fs.statSync(m3u8Path).size >= 64;
+  };
+  // 检查是否已有至少一个 ts 分片
+  var hasSegment = function() {
+    if (!task.cacheDir) return false;
+    try {
+      var files = fs.readdirSync(task.cacheDir);
+      for (var i = 0; i < files.length; i++) {
+        if (files[i].endsWith('.ts') && fs.statSync(path.join(task.cacheDir, files[i])).size > 0) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  };
 
-  // 文件已有足够数据 → 直接返回
-  if (fs.existsSync(filePath) && fs.statSync(filePath).size >= (minSize || 1024)) return true;
-
-  // 任务已失败 → 不等待
+  if (hasM3u8() && hasSegment()) return true;
   if (task._error || task._exitCode !== null) return false;
 
   var startTime = Date.now();
   while (Date.now() - startTime < maxWait) {
     if (task._error || (task._exitCode !== null && task._exitCode !== undefined)) {
-      return fs.existsSync(filePath) && fs.statSync(filePath).size >= (minSize || 1024);
+      return hasM3u8() && hasSegment();
     }
-    if (fs.existsSync(filePath) && fs.statSync(filePath).size >= (minSize || 1024)) return true;
+    if (hasM3u8() && hasSegment()) return true;
     var t = Date.now() + 200;
     while (Date.now() < t) { /* wait */ }
   }
-  return fs.existsSync(filePath) && fs.statSync(filePath).size >= (minSize || 1024);
+  return hasM3u8() && hasSegment();
 }
 
 // 续期访问时间

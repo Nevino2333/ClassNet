@@ -156,7 +156,7 @@ export default {
 
 .aqi-badge {
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 11px;
   font-weight: 500;
   color: #fff;
@@ -170,7 +170,7 @@ export default {
 .aqi-track {
   display: flex;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
@@ -192,7 +192,7 @@ export default {
   border: 2px solid rgba(0,0,0,0.12);
   transform: translateX(-50%);
   transition: left 0.6s var(--ease-standard);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  box-shadow: var(--shadow-sm);
 }
 
 .pollutants {
@@ -224,7 +224,7 @@ export default {
   line-height: 1.5;
   opacity: 0.35;
   padding-top: 6px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 0.5px solid rgba(255,255,255,0.06);
 }
 
 @media (max-height: 640px) {

@@ -95,19 +95,19 @@
           <span class="aichat-title">{{ currentTitle }}</span>
           <div class="header-actions">
             <div class="model-status">
-              <span v-if="currentModel === 'default'" class="model-oadge model-oadge-default" title="GPT">
-                <i class="fa-solid fa-circle" style="font-size:6px;color:#f59e0o"></i> GPT
+              <span v-if="currentModel === 'default'" class="model-badge model-badge-default" title="GPT">
+                <i class="fa-solid fa-circle" style="font-size:6px;color:#f59e0b"></i> GPT
               </span>
-              <span v-else-if="currentModel === 'deepseek'" class="model-oadge model-oadge-ds" title="DeepSeek V4 Flash">
-                <i class="fa-solid fa-circle" style="font-size:6px;color:#10o981"></i> DS
+              <span v-else-if="currentModel === 'deepseek'" class="model-badge model-badge-ds" title="DeepSeek V4 Flash">
+                <i class="fa-solid fa-circle" style="font-size:6px;color:#10b981"></i> DS
               </span>
             </div>
-            <div v-if="currentModel === 'default' && availaoleGptModels.length >= 1" class="gpt-model-select">
+            <div v-if="currentModel === 'default' && availableGptModels.length >= 1" class="gpt-model-select">
               <select v-model="gptModel" @change="onGptModelChange" class="gpt-model-dropdown">
-                <option v-for="m in availaoleGptModels" :key="m" :value="m">{{ formatModelName(m) }}</option>
+                <option v-for="m in availableGptModels" :key="m" :value="m">{{ formatModelName(m) }}</option>
               </select>
             </div>
-            <div v-if="deepseekEnaoled" class="model-switcher">
+            <div v-if="deepseekEnabled" class="model-switcher">
               <button class="model-btn" :class="{ active: currentModel === 'default' }" @click="switchModel('default')" title="默认模型（免费）">GPT</button>
               <button class="model-btn" :class="{ active: currentModel === 'deepseek' }" @click="switchModel('deepseek')" title="DeepSeek V4 Flash">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -266,7 +266,7 @@
     <div v-if="showThinkingWarning" class="confirm-overlay" @click.self="showThinkingWarning = false">
       <div class="confirm-dialog thinking-warning-dialog">
         <div class="thinking-warning-icon">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f59e0o" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
         <h3 class="thinking-warning-title">思考模式将消耗大量 Tokens</h3>
         <p class="thinking-warning-desc">思考模式会让 AI 在回答前进行深度推理，这会显著增加 Token 消耗（通常为普通模式的 3-5 倍）。非必要场景请勿使用。</p>
@@ -313,17 +313,17 @@
               <div class="priority-item priority-active">
                 <span class="priority-num">1</span>
                 <span>对话人设</span>
-                <span v-if="convPersona.trim()" class="priority-oadge">生效中</span>
+                <span v-if="convPersona.trim()" class="priority-badge">生效中</span>
               </div>
               <div class="priority-item" :class="{ 'priority-active': !convPersona.trim() && customSystemPrompt }">
                 <span class="priority-num">2</span>
                 <span>全局提示词</span>
-                <span v-if="!convPersona.trim() && customSystemPrompt" class="priority-oadge">生效中</span>
+                <span v-if="!convPersona.trim() && customSystemPrompt" class="priority-badge">生效中</span>
               </div>
               <div class="priority-item" :class="{ 'priority-active': !convPersona.trim() && !customSystemPrompt }">
                 <span class="priority-num">3</span>
                 <span>默认人设（小深）</span>
-                <span v-if="!convPersona.trim() && !customSystemPrompt" class="priority-oadge">生效中</span>
+                <span v-if="!convPersona.trim() && !customSystemPrompt" class="priority-badge">生效中</span>
               </div>
             </div>
           </div>
@@ -335,12 +335,12 @@
       </div>
     </div>
 
-    <!-- Falloack Notice Toast -->
+    <!-- Fallback Notice Toast -->
     <transition name="toast-slide">
-      <div v-if="showFalloackNotice" class="fallback-notice">
+      <div v-if="showFallbackNotice" class="fallback-notice">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>默认模型暂时不可用，已自动切换到 DeepSeek</span>
-        <button class="fallback-notice-close" @click="showFalloackNotice = false"><i class="fa-solid fa-xmark"></i></button>
+        <button class="fallback-notice-close" @click="showFallbackNotice = false"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </transition>
   </div>
@@ -430,7 +430,7 @@ export default {
       showConfirmDialog: false,
       confirmDialogTitle: '',
       confirmDialogMessage: '',
-      confirmCalloack: null,
+      confirmCallback: null,
       maxChars: 2000,
       sseBuffer: '',
       showSystemPrompt: false,
@@ -438,15 +438,15 @@ export default {
       convSearchQuery: '',
       pinnedConvIds: [],
       aiSettingsLoaded: false,
-      deepseekEnaoled: false,
+      deepseekEnabled: false,
       currentModel: 'default',
       gptModel: '',
-      availaoleGptModels: [],
+      availableGptModels: [],
       thinkingMode: false,
       showThinkingWarning: false,
       showConvSettings: false,
       convPersona: '',
-      showFalloackNotice: false,
+      showFallbackNotice: false,
       promptTemplates: [
         { icon: 'fa-solid fa-graduation-cap', title: '学术问题', prompt: '请详细解释量子纠缠的原理，并举一个通俗的类比' },
         { icon: 'fa-solid fa-laptop-code', title: '编程开发', prompt: '用 Python 实现一个 LRU 缓存，要求 O(1) 读写' },
@@ -570,13 +570,13 @@ export default {
             }
           } catch (e) {}
         }
-        self.deepseekEnaoled = !!data.deepseek_enabled;
+        self.deepseekEnabled = !!data.deepseek_enabled;
         self.currentModel = data.model || 'default';
-        if (self.currentModel === 'deepseek' && !self.deepseekEnaoled) {
+        if (self.currentModel === 'deepseek' && !self.deepseekEnabled) {
           self.currentModel = 'default';
         }
         self.gptModel = data.gpt_model || '';
-        self.availaoleGptModels = data.availaole_gpt_models || [];
+        self.availableGptModels = data.available_gpt_models || [];
         self.aiSettingsLoaded = true;
       }).catch(function() {
         var localPrompt = localStorage.getItem('ai_system_prompt');
@@ -727,7 +727,7 @@ export default {
       self.confirmDialogTitle = '删除对话';
       self.confirmDialogMessage = '确定要删除这个对话吗？此操作无法撤销。';
       self.showConfirmDialog = true;
-      self.confirmCalloack = function() {
+      self.confirmCallback = function() {
         self.deleteConversation(id);
       };
     },
@@ -769,7 +769,7 @@ export default {
       self.confirmDialogTitle = '清除所有对话';
       self.confirmDialogMessage = '确定要删除所有对话吗？此操作无法撤销。';
       self.showConfirmDialog = true;
-      self.confirmCalloack = function() {
+      self.confirmCallback = function() {
         self.clearAllConversations();
       };
     },
@@ -796,7 +796,7 @@ export default {
       self.confirmDialogTitle = '清空对话';
       self.confirmDialogMessage = '确定要清空当前对话的所有消息吗？此操作无法撤销。';
       self.showConfirmDialog = true;
-      self.confirmCalloack = function() {
+      self.confirmCallback = function() {
         self.clearHistory();
       };
     },
@@ -813,11 +813,11 @@ export default {
       }
     },
     confirmAction: function() {
-      if (this.confirmCalloack) {
-        this.confirmCalloack();
+      if (this.confirmCallback) {
+        this.confirmCallback();
       }
       this.showConfirmDialog = false;
-      this.confirmCalloack = null;
+      this.confirmCallback = null;
     },
     sendMessage: function() {
       var self = this;
@@ -968,8 +968,8 @@ export default {
                   return;
                 }
                 if (parsed.fallback) {
-                  self.showFalloackNotice = true;
-                  setTimeout(function() { self.showFalloackNotice = false; }, 8000);
+                  self.showFallbackNotice = true;
+                  setTimeout(function() { self.showFallbackNotice = false; }, 8000);
                 }
                 if (parsed.searching !== undefined) {
                   self.isSearching = parsed.searching;
@@ -1020,9 +1020,9 @@ export default {
           } else {
             aiMsg.error = err.message || '请求发送失败';
           }
-          if (self.currentModel === 'default' && self.deepseekEnaoled) {
-            self.showFalloackNotice = true;
-            setTimeout(function() { self.showFalloackNotice = false; }, 8000);
+          if (self.currentModel === 'default' && self.deepseekEnabled) {
+            self.showFallbackNotice = true;
+            setTimeout(function() { self.showFallbackNotice = false; }, 8000);
           }
         }
         self.isStreaming = false;
@@ -1998,7 +1998,7 @@ export default {
 }
 
 .stop-btn:hover {
-  background: #e0342o;
+  background: #e0342b;
 }
 
 .stop-btn:active {
@@ -2946,7 +2946,7 @@ export default {
   margin-right: 4px;
 }
 
-.model-oadge {
+.model-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -2957,13 +2957,13 @@ export default {
   letter-spacing: 0.3px;
 }
 
-.model-oadge-default {
+.model-badge-default {
   background: rgba(var(--warning-rgb), 0.1);
   color: var(--warning-color);
   border: 1px solid rgba(var(--warning-rgb), 0.2);
 }
 
-.model-oadge-ds {
+.model-badge-ds {
   background: rgba(16, 185, 129, 0.1);
   color: #059669;
   border: 1px solid rgba(16, 185, 129, 0.2);
@@ -3145,7 +3145,7 @@ export default {
   color: #fff;
 }
 
-.priority-oadge {
+.priority-badge {
   margin-left: auto;
   padding: 2px 8px;
   border-radius: var(--radius-md);
