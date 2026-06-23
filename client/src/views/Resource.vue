@@ -590,13 +590,13 @@ export default {
       videoEl.setAttribute('preload', 'metadata');
       container.appendChild(videoEl);
 
-      // MKV → HLS 流（通过 @videojs/http-streaming 播放）
+      // MKV → 服务端 ffmpeg 实时转码为分片 MP4
       // 其他格式 → 直链播放
       var isMkv = self.previewItem && (self.previewItem.extension || '').toLowerCase() === 'mkv';
       var videoSrc, videoType;
       if (isMkv) {
         videoSrc = '/api/resources/stream?path=' + encodeURIComponent(self.previewFilePath) + '&_t=' + Date.now();
-        videoType = 'application/x-mpegURL';
+        videoType = 'video/mp4';
       } else {
         videoSrc = self.previewUrl;
         videoType = self._getVideoMimeType(self.previewItem);
@@ -611,6 +611,18 @@ export default {
         fluid: false,
         touchUi: true,
         playbackRates: [0.5, 1, 1.25, 1.5, 2],
+        // VHS 配置：处理流式视频的超时和重试
+        html5: {
+          vhs: {
+            // 允许足够长的时间等待 ffmpeg 生成数据
+            segmentRequestTimeout: 30000,
+            bandwidthVariance: 1.2,
+            useBandwidthFromLocalStorage: false
+          },
+          // 原生 HLS 回退（Safari）
+          nativeAudioTracks: false,
+          nativeVideoTracks: false
+        },
         controlBar: {
           children: [
             'playToggle',
@@ -642,11 +654,23 @@ export default {
       });
       self._videoPlayer.on('error', function() {
         var error = self._videoPlayer.error();
-        var msg = isMkv ? 'MKV 转码播放失败，请确认服务器已安装 ffmpeg' : '视频加载失败';
-        if (error && error.code === 4) {
-          msg = isMkv ? 'MKV 转码尚未就绪，请稍后重试' : '视频加载失败，请稍后重试';
+        // MEDIA_ERR_NETWORK 或 MKV 通常意味着服务端问题
+        if (error && error.code === 2) {
+          self.$store.commit('toast/SHOW_TOAST', {
+            message: '网络错误：请检查服务器连接',
+            type: 'error'
+          });
+        } else if (error && error.code === 4) {
+          self.$store.commit('toast/SHOW_TOAST', {
+            message: isMkv ? 'MKV 转码失败：请确认服务器已安装 ffmpeg，且视频编码为 H.264/VP9' : '视频格式不支持或文件已损坏',
+            type: 'error'
+          });
+        } else {
+          self.$store.commit('toast/SHOW_TOAST', {
+            message: isMkv ? 'MKV 播放失败，请检查服务器 ffmpeg 是否安装' : '视频加载失败',
+            type: 'error'
+          });
         }
-        self.$store.commit('toast/SHOW_TOAST', { message: msg, type: 'error' });
         console.error('[Video Error]', error);
       });
     },
