@@ -579,6 +579,75 @@ export default {
       self._disposeVideoPlayer();
       var container = self.$refs.videoContainer;
       if (!container) return;
+      container.innerHTML = '';
+
+      var isMkv = self.previewItem && (self.previewItem.extension || '').toLowerCase() === 'mkv';
+
+      if (isMkv) {
+        // MKV: Chrome 80 WebView 原生支持 MKV，但 video.js 不识别 MKV MIME 类型
+        // 因此使用原生 <video> 标签，绕过 video.js 的格式检测
+        self._initNativeVideo(container);
+      } else {
+        // 其他格式: 使用 video.js 播放器
+        self._initVideoJSPlayer(container);
+      }
+    },
+
+    // 原生 <video> 播放器（用于 MKV 等 video.js 不支持的格式）
+    _initNativeVideo: function(container) {
+      var self = this;
+      var videoEl = document.createElement('video');
+      videoEl.className = 'native-video-player';
+      videoEl.setAttribute('controls', '');
+      videoEl.setAttribute('playsinline', '');
+      videoEl.setAttribute('webkit-playsinline', '');
+      videoEl.setAttribute('x5-playsinline', '');
+      videoEl.setAttribute('x5-video-player-type', 'h5');
+      videoEl.setAttribute('preload', 'metadata');
+      videoEl.style.width = '100%';
+      videoEl.style.height = '100%';
+      videoEl.style.outline = 'none';
+      container.appendChild(videoEl);
+
+      // 直接使用原始文件 URL，让 Chrome 原生解码 MKV
+      var source = document.createElement('source');
+      source.src = self.previewUrl + '?_t=' + Date.now();
+      source.type = 'video/x-matroska';
+      videoEl.appendChild(source);
+
+      // 错误处理
+      videoEl.addEventListener('error', function() {
+        var err = videoEl.error;
+        var msg = '无法播放此 MKV 视频';
+        if (err) {
+          switch (err.code) {
+            case 1: msg = '视频播放已中止'; break;
+            case 2: msg = '网络错误，无法加载视频'; break;
+            case 3: msg = '视频解码失败：编码格式可能不被 Chrome 80 支持（建议 H.264/VP9 + AAC/MP3）'; break;
+            case 4: msg = '视频文件不存在或无法访问'; break;
+          }
+        }
+        self.$store.commit('toast/SHOW_TOAST', { message: msg, type: 'error' });
+        console.error('[MKV Native Error]', err);
+      });
+
+      self._videoPlayer = {
+        _isNative: true,
+        _el: videoEl,
+        dispose: function() {
+          try {
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+            if (videoEl.parentNode) videoEl.parentNode.removeChild(videoEl);
+          } catch (e) {}
+        }
+      };
+    },
+
+    // video.js 播放器（用于 MP4、WebM、HLS 等标准格式）
+    _initVideoJSPlayer: function(container) {
+      var self = this;
       var videoEl = document.createElement('video');
       videoEl.className = 'video-js vjs-default-skin vjs-big-play-centered';
       videoEl.setAttribute('playsinline', '');
@@ -588,14 +657,8 @@ export default {
       videoEl.setAttribute('preload', 'metadata');
       container.appendChild(videoEl);
 
-      // MKV 文件走 HLS 流媒体路径
-      var isMkv = self.previewItem && (self.previewItem.extension || '').toLowerCase() === 'mkv';
       var videoSrc = self.previewUrl;
       var videoType = self._getVideoMimeType(self.previewItem);
-      if (isMkv) {
-        videoSrc = '/api/resources/stream?path=' + encodeURIComponent(self.previewFilePath) + '&_t=' + Date.now();
-        videoType = 'video/mp4';
-      }
 
       self._videoPlayer = videojs(videoEl, {
         controls: true,
@@ -620,7 +683,7 @@ export default {
         sources: [{ src: videoSrc, type: videoType }],
         userActions: { hotkeys: true }
       });
-      // 移动端手势支持：双击快进/快退、旋转全屏
+      // 移动端手势支持：双击快进/快退
       self._videoPlayer.mobileUi({
         fullscreen: {
           enterOnRotate: false,
@@ -650,13 +713,18 @@ export default {
         try { this._videoPlayer.dispose(); } catch (e) {}
         this._videoPlayer = null;
       }
+      // 清理容器中的残留 DOM 元素
+      var container = this.$refs.videoContainer;
+      if (container) {
+        container.innerHTML = '';
+      }
     },
     _getVideoMimeType: function(item) {
       if (!item) return 'video/mp4';
       var ext = (item.extension || '').toLowerCase();
       var map = {
         mp4: 'video/mp4', webm: 'video/webm', ogg: 'video/ogg', ogv: 'video/ogg',
-        m3u8: 'application/x-mpegURL', mov: 'video/mp4', mkv: 'video/mp4',
+        m3u8: 'application/x-mpegURL', mov: 'video/mp4', mkv: 'video/x-matroska',
         avi: 'video/mp4', flv: 'video/x-flv', ts: 'video/mp2t'
       };
       return map[ext] || 'video/mp4';
@@ -734,6 +802,9 @@ export default {
 .video-back-btn:active { transform: scale(0.92); opacity: 0.7; }
 .video-js-container { width: 100%; height: 100%; }
 .video-js-container .video-js { width: 100% !important; height: 100% !important; outline: none !important; }
+/* 原生播放器（MKV 等）*/
+.video-js-container .native-video-player { width: 100%; height: 100%; outline: none; background: #000; }
+.video-js-container .native-video-player:focus { outline: none; box-shadow: none; }
 .video-js-container .video-js:focus, .video-js-container .video-js:focus-visible, .video-js-container .video-js:focus-within { outline: none !important; box-shadow: none !important; }
 .video-js-container .vjs-control:focus, .video-js-container .vjs-control:focus-visible, .video-js-container .vjs-control:hover { outline: none !important; box-shadow: none !important; text-shadow: none !important; }
 .video-js-container .vjs-big-play-button:focus, .video-js-container .vjs-big-play-button:focus-visible { outline: none !important; box-shadow: none !important; border-color: transparent !important; }

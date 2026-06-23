@@ -2498,7 +2498,7 @@ export default {
 .markdown-body >>> .latex-document {
   line-height: 1.6;
   padding: 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow-x: auto;
   word-break: normal;
   margin: 8px 0;
@@ -2508,7 +2508,7 @@ export default {
   font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
   background: rgba(127, 127, 127, 0.1);
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .markdown-body >>> .latex-pagebreak {
@@ -2524,7 +2524,7 @@ export default {
 .markdown-body >>> .latex-colorbox {
   display: inline-block;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   line-height: 1.5;
 }
 
@@ -2547,7 +2547,7 @@ export default {
 .markdown-body >>> .latex-verbatim {
   background: rgba(127, 127, 127, 0.08);
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow-x: auto;
   font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
   font-size: 0.9em;
