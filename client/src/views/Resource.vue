@@ -2,6 +2,9 @@
   <div class="resource-page">
     <AppNavBar title="资源仓库">
       <template slot="actions">
+        <button class="nav-action-btn" @click="$router.push('/cloud')" title="我的云盘">
+          <i class="fa-solid fa-cloud"></i>
+        </button>
         <button class="nav-action-btn" @click="toggleSearch" title="搜索">
           <i class="fa-solid fa-magnifying-glass"></i>
         </button>

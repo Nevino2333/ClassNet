@@ -3513,6 +3513,13 @@ export default {
           self.$set(self.activeFile, 'cloudVisibility', data.visibility);
           self.$store.commit('toast/SHOW_TOAST', { message: '已上传到云端', type: 'success' });
           self.loadCloudNotes();
+          // 同步保存到云盘 note 目录（静默执行，不影响主流程）
+          api.post('/cloud/note/' + data.id, {
+            content: data.content,
+            title: data.title,
+            tags: data.tags,
+            folder: data.folder
+          }).catch(function() {});
         }
       }).catch(function(err) {
         var msg = '上传失败';
