@@ -1,213 +1,264 @@
-# ClassNet
+<p align="center">
+  <img src="https://img.shields.io/badge/Vue-2.7-4fc08d?logo=vuedotjs" alt="Vue 2.7">
+  <img src="https://img.shields.io/badge/Express-4.x-000000?logo=express" alt="Express 4">
+  <img src="https://img.shields.io/badge/Vite-5.x-646cff?logo=vite" alt="Vite 5">
+  <img src="https://img.shields.io/badge/pnpm-monorepo-f69220?logo=pnpm" alt="pnpm monorepo">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+</p>
 
-ClassNet 是一个面向校园场景的内网 WebOS 平台，采用类 iOS 设计风格，为横屏平板设备优化。提供即时通讯、天气查询、AI 对话、社区论坛、资源仓库、音乐播放等功能，支持多班级跨网络消息联动。
+<h1 align="center">📱 ClassNet</h1>
+<p align="center"><strong>校园内网 WebOS 平台</strong> · 类 iOS 设计 · 横屏平板优化</p>
 
-## 功能特性
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue" alt="Platform">
+  <img src="https://img.shields.io/badge/node-18%2B-brightgreen?logo=nodedotjs" alt="Node 18+">
+  <img src="https://img.shields.io/badge/database-SQLite-003b57?logo=sqlite" alt="SQLite">
+</p>
 
-### 核心功能
+---
 
-- **桌面系统** — 类 iOS 桌面，支持应用图标排列、壁纸切换、锁屏、超能岛通知
-- **即时通讯** — 公共聊天室、班级群聊、私聊，支持表情、消息回复、消息撤回、群公告
-- **天气系统** — 实时天气查询、7日预报、空气质量、生活指数、天气动画
-- **AI 对话** — 支持 OpenAI 兼容 API 和 DeepSeek，可联网搜索（Tavily）
-- **社区论坛** — 发帖、评论、点赞、个人主页
-- **资源仓库** — 文件浏览、搜索、PDF/视频预览、下载
-- **音乐播放** — 在线播放、歌词同步、播放列表
-- **笔记系统** — Markdown 笔记，支持代码高亮、数学公式、流程图
-- **管理后台** — 用户管理、广播管理、班干管理、天气预警调度、操作日志
+## ✨ 为什么选择 ClassNet？
 
-### 系统特性
+ClassNet 为班级教室场景而生 —— 一台服务器 + 一台平板 = 完整的班级数字平台。无需外网，局域网即可运行。
 
-- **跨班级联动** — 通过 WebSocket 中继实现不同班级公共聊天室消息实时同步
-- **等级经验系统** — 登录签到、发帖、互动获取经验，连续登录奖励加成
-- **免打扰模式** — 支持按群聊/用户设置免打扰
-- **深色/浅色主题** — 跟随系统或手动切换
-- **响应式布局** — 适配横屏平板（960x600）及桌面浏览器
+|   | 功能 | 说明 |
+|---|------|------|
+| 🖥️ | **桌面系统** | 类 iOS 启动台，应用图标排列、壁纸切换、锁屏密码、通知中心（超能岛） |
+| 💬 | **即时通讯** | 公共聊天、班级群聊（自动建群）、私聊、表情、消息撤回、群公告 |
+| 🌤️ | **天气系统** | 实时天气、7 日预报、空气质量、生活指数、降雨预警动画 |
+| 🤖 | **AI 对话** | OpenAI 兼容 / DeepSeek 双引擎，Tavily 联网搜索，LaTeX 数学渲染 |
+| 📝 | **社区论坛** | 发帖、评论、点赞、收藏、Markdown + LaTeX 渲染 |
+| 📁 | **资源仓库** | 文件浏览与搜索、PDF 在线预览、MKV/MP4 视频流播放 |
+| 🎵 | **音乐播放** | 在线播放列表、LRC 歌词同步、背景播放 |
+| 📒 | **笔记系统** | Markdown 编辑器、代码高亮、Mermaid 流程图、KaTeX 数学公式 |
+| ⚙️ | **管理后台** | 用户管理、广播通知、班干委任、应用管控、操作日志 |
 
-## 技术栈
+### 🔗 高级特性
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | Vue 2.7 + Vue Router 3 + Vuex 3 |
-| 构建 | Vite 5 |
-| 后端 | Express 4 + better-sqlite3 |
-| 实时通信 | ws (WebSocket) |
-| 认证 | JWT (jsonwebtoken) |
-| 包管理 | pnpm (monorepo) |
+- **跨班级联动** — WebSocket 中继实现多班级公共聊天室消息实时同步（支持 Tailscale 组网）
+- **等级经验** — 签到、发帖、点赞获取经验，连续登录加成，排行榜
+- **应用管控** — 管理员/班干可远程启用或禁用桌面上的每个应用
+- **深色/浅色主题** — 跟随系统自动切换或手动选择
+- **自适应布局** — 专为横屏平板（960×600）优化，同时适配桌面浏览器
 
-## 快速开始
+---
+
+## 🚀 快速开始
 
 ### 前置要求
 
-- Node.js 18+
-- pnpm 8+
-- ffmpeg（视频转码功能需要，可选）
+- **Node.js** ≥ 18
+- **pnpm** ≥ 8
+- **ffmpeg**（可选，视频转码需要）
 
-### 安装
+### 一分钟启动
 
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd ClassNet
-
-# 安装依赖
+git clone <repo-url> && cd ClassNet
 pnpm install
-
-# 配置环境变量
 cp server/.env.example server/.env
-# 编辑 server/.env，必须设置 JWT_SECRET（否则服务无法启动）
-
-# 准备资源目录（可选，用于壁纸/音乐/视频等静态资源）
+# 编辑 server/.env → 设置 JWT_SECRET（必填，否则拒绝启动）
 mkdir -p Resources/public/wallpapers Resources/public/music Resources/videos
-
-# 初次使用可通过初始化向导配置班级和预注册名单
-# 启动后访问 /setup 进入配置页面
-
-# 启动开发服务器（前端 :5001 + 后端 :9001）
 pnpm dev
 ```
 
-访问 http://localhost:5001（开发模式，Vite 自动代理 API 到 :9001）
+打开 `http://localhost:5001`，首次使用访问 `/setup` 完成班级初始化。
 
-### 生产构建
+### 生产部署
 
 ```bash
-pnpm build       # 构建前端到 client/dist/
-# 构建脚本会自动将 dist/ 复制到 server/public/
-# 启动生产服务器
+pnpm build
 cd server && NODE_ENV=production node src/app.js
+# → http://localhost:9001
 ```
 
-访问 http://localhost:9001
+Windows 用户也可用 `start.bat`（开发）或 `start-prod.bat`（生产）一键启动。`cn.bat` 提供 PM2 进程管理。
 
-### 首次配置
+> 📖 完整部署指南（多机中继、Tailscale 组网、HTTPS 配置）→ [DEPLOY.md](./DEPLOY.md)
 
-项目提供可视化初始化向导：启动服务器后访问 `/setup`，按提示设置：
-1. 届数（毕业年份后两位）
-2. 班级（编号和名称）
-3. 预注册名单（导入或手动添加学生姓名）
-4. 班管（每班指定一名班级管理员）
-5. 确认保存，自动写入配置文件并初始化数据库
+---
 
-> 详细部署说明请参阅 [DEPLOY.md](./DEPLOY.md)
+## 🧭 首次配置向导
 
-## 项目结构
+启动后访问 `/setup`，五步完成初始化：
+
+```
+① 届数        → 设置毕业年份后两位（如 25 = 2025 届）
+② 班级        → 班级编号 + 名称（如 08 → 8 班）
+③ 预注册名单  → 批量导入学生姓名，自动分配 YYCCNN 格式学号
+④ 班管指定    → 每班选一人担任班级管理员（ID 末两位 00）
+⑤ 确认保存    → 写入 .env + pre-records.json + 初始化数据库
+```
+
+学生注册时使用预注册名单中的真实姓名，系统自动匹配学号。ID 匹配 `ADMIN_USER_IDS` 即自动获得管理员权限。
+
+---
+
+## 🏗️ 架构
+
+```
+┌────────────── client (Vue 2 + Vite) ──────────────┐
+│  :5001  Vite Dev Server (HMR + API 代理 → :9001)  │
+│  桌面 · 聊天 · 天气 · AI · 社区 · 资源 · 音乐 · 笔记 │
+└──────────────────────┬─────────────────────────────┘
+                       │ HTTP / WebSocket
+┌──────────────────────┴─────────────────────────────┐
+│  :9001  server (Express + ws)                       │
+│  JWT 认证 · SQLite · 15 个 API 路由 · WebSocket 聊天│
+│  :10001 WebSocket · :10011 中继端口                  │
+└─────────────────────────────────────────────────────┘
+```
+
+| 端口 | 服务 | 说明 |
+|------|------|------|
+| `5001` | Vite Dev Server | 开发热重载，自动代理 `/api` → `:9001` |
+| `9001` | Express HTTP | REST API + 静态文件服务 |
+| `10001` | WebSocket | 本地聊天实时通信 |
+| `10011` | Relay WS | 跨班级消息中继 |
+
+---
+
+## 📦 技术栈
+
+| 层 | 技术 |
+|---|------|
+| 前端框架 | Vue 2.7 + Vue Router 3 + Vuex 3 |
+| 构建工具 | Vite 5 |
+| UI 风格 | 类 iOS 设计系统（自研 ios/ 组件库） |
+| 后端 | Express 4 |
+| 数据库 | better-sqlite3（嵌入式，零配置） |
+| 实时通信 | ws (WebSocket) |
+| 认证 | JWT (jsonwebtoken + bcryptjs) |
+| Markdown | marked + highlight.js + KaTeX + Mermaid |
+| LaTeX | 自研渲染引擎（KaTeX 数学 + 自定义文档转换器） |
+| 视频 | 自研流式转码（ffmpeg + fragmented MP4） |
+| 包管理 | pnpm workspace (monorepo) |
+
+---
+
+## 📂 项目结构
 
 ```
 ClassNet/
-├── server/                     # 后端服务
-│   ├── src/
-│   │   ├── app.js              # Express 入口
-│   │   ├── ws/chat-server.js   # WebSocket 聊天服务
-│   │   ├── routes/             # REST API 路由
-│   │   │   ├── auth.js         # 认证（注册/登录）
-│   │   │   ├── chat.js         # 聊天相关 API
-│   │   │   ├── community.js    # 社区 API
-│   │   │   ├── admin.js        # 管理后台 API
-│   │   │   ├── weather.js      # 天气 API
-│   │   │   └── ai.js           # AI 对话 API
-│   │   ├── services/           # 业务服务
-│   │   │   ├── weather.js      # 和风天气服务
-│   │   │   └── ai.js           # AI 对话服务
-│   │   ├── utils/              # 工具函数
-│   │   │   ├── init-db.js      # 数据库初始化
-│   │   │   ├── exp.js          # 经验系统
-│   │   │   └── constants.js    # 常量定义
-│   │   ├── config/index.js     # 配置模块
-│   │   └── middleware/auth.js  # JWT 认证中间件
-│   ├── config/
-│   │   └── pre-records.example.json  # 预注册名单模板
-│   ├── .env.example            # 环境变量模板
-│   └── package.json
-├── client/                     # 前端项目
-│   ├── src/
-│   │   ├── views/              # 页面组件
-│   │   │   ├── Desktop.vue     # 桌面主页
-│   │   │   ├── Chat.vue        # 聊天
-│   │   │   ├── Weather.vue     # 天气
-│   │   │   ├── AIChat.vue      # AI 对话
-│   │   │   ├── Community.vue   # 社区
-│   │   │   ├── Music.vue       # 音乐
-│   │   │   ├── Notes.vue       # 笔记
-│   │   │   ├── Resource.vue    # 资源仓库
-│   │   │   ├── Settings.vue    # 设置
-│   │   │   ├── Admin.vue       # 管理后台
-│   │   │   ├── Browser.vue     # 资源浏览器
-│   │   │   ├── Login.vue       # 登录
-│   │   │   └── Register.vue    # 注册
-│   │   ├── components/         # 通用组件
-│   │   │   ├── SuperIsland.vue # 超能岛通知
-│   │   │   ├── AppNavBar.vue   # 导航栏
-│   │   │   ├── LockScreen.vue  # 锁屏
-│   │   │   ├── ChatBubble.vue  # 聊天气泡
-│   │   │   ├── UserAvatar.vue  # 用户头像
-│   │   │   └── EmojiPicker.vue # 表情选择器
-│   │   ├── store/              # Vuex 状态管理
-│   │   ├── router/             # 路由配置
-│   │   ├── utils/              # 工具函数
-│   │   └── styles/             # 全局样式
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-├── Resources/                  # 资源文件（需自行准备）
-│   └── public/
-│       ├── level/              # 等级图标
-│       ├── wallpaper/          # 壁纸
-│       ├── weather-icons/      # 天气图标
-│       ├── pdfjs/              # PDF 预览器
-│       └── music/              # 音乐文件
-├── pnpm-workspace.yaml
-├── package.json
-├── DEPLOY.md                   # 详细部署文档
-└── .gitignore
+├── client/src/
+│   ├── views/                # 15 个页面
+│   │   ├── Desktop.vue       # 桌面主页（应用启动台）
+│   │   ├── Chat.vue          # 即时通讯
+│   │   ├── Weather.vue       # 天气系统
+│   │   ├── AIChat.vue        # AI 对话
+│   │   ├── Community.vue     # 社区论坛
+│   │   ├── Resource.vue      # 资源仓库
+│   │   ├── Music.vue         # 音乐播放
+│   │   ├── Notes.vue         # Markdown 笔记
+│   │   ├── Settings.vue      # 个人设置
+│   │   ├── Admin.vue         # 管理后台
+│   │   ├── Announcements.vue # 公告列表
+│   │   ├── Browser.vue       # 内置浏览器
+│   │   ├── Banned.vue        # 封禁提示
+│   │   ├── Login.vue         # 登录
+│   │   └── Register.vue      # 注册
+│   ├── components/           # 通用组件
+│   │   ├── ios/              # iOS 风格组件库（NavBar, List, Card, Switch…）
+│   │   ├── island/           # 超能岛面板（通知/操作/历史/音乐/浏览器）
+│   │   ├── SuperIsland.vue   # 超能岛主组件
+│   │   ├── AppNavBar.vue     # 应用导航栏
+│   │   ├── LockScreen.vue    # 锁屏页面
+│   │   ├── ChatBubble.vue    # 聊天气泡
+│   │   ├── WeatherAnimation.vue  # 天气动画
+│   │   ├── ConfirmDialog.vue # 确认对话框
+│   │   └── …
+│   ├── store/modules/        # Vuex（auth, chat, community, music, island…）
+│   ├── router/index.js       # 路由配置
+│   ├── utils/                # latex-renderer, api, websocket, helpers…
+│   └── styles/global.scss    # 全局样式 + CSS 变量
+├── server/src/
+│   ├── app.js                # Express 入口
+│   ├── config/index.js       # 配置模块（从 .env 读取）
+│   ├── routes/               # 15 个 API 路由
+│   │   ├── auth.js           # 注册/登录
+│   │   ├── user.js           # 用户信息
+│   │   ├── chat.js           # 聊天消息
+│   │   ├── weather.js        # 天气查询
+│   │   ├── ai-chat.js        # AI 对话
+│   │   ├── resource.js       # 资源文件 + 流媒体
+│   │   ├── community.js      # 社区帖子
+│   │   ├── notes.js          # 笔记同步
+│   │   ├── admin.js          # 管理后台
+│   │   ├── setup.js          # 初始化向导 API
+│   │   ├── level.js          # 等级经验
+│   │   ├── music.js          # 音乐服务
+│   │   ├── system.js         # 系统设置
+│   │   ├── assets.js         # 静态资源
+│   │   └── cdn-proxy.js      # CDN 代理
+│   ├── ws/chat-server.js     # WebSocket 聊天 + 中继
+│   ├── middleware/            # 中间件（认证、限流）
+│   ├── services/             # 业务服务（转码、中继总线）
+│   └── utils/                # 工具（init-db, db, jwt, cache, crash-logger…）
+├── server/public/            # 构建产物 + setup.html
+├── server/database/          # SQLite 数据库（自动创建）
+├── Resources/                # 🔒 用户自行管理的静态资源
+│   └── public/               # 壁纸、音乐、视频、字体、PDF 预览器…
+├── .claude/                  # Claude Code 配置
+├── start.bat                 # 开发启动脚本 (Windows)
+├── start-prod.bat            # 生产启动脚本 (Windows)
+├── cn.bat                    # PM2 进程管理 (Windows)
+├── start.sh                  # 启动脚本 (Linux)
+├── DEPLOY.md                 # 详细部署文档
+└── CLAUDE.md                 # AI 协作规则
 ```
 
-## 环境变量
+---
 
-核心环境变量（完整列表见 [DEPLOY.md](./DEPLOY.md)）：
+## 🔧 环境变量
+
+> 完整列表 + 默认值 → [DEPLOY.md § 3.1](./DEPLOY.md#31-环境变量详解)
 
 | 变量 | 说明 | 必填 |
-|------|------|------|
-| `JWT_SECRET` | JWT 签名密钥（32位以上随机字符串） | **是** |
-| `ADMIN_USER_IDS` | 管理员用户ID，逗号分隔 | 否 |
-| `ADMIN_PASSWORD` | 管理员初始密码 | 否 |
-| `QWEATHER_KEY` | 和风天气 API Key | 否 |
-| `AI_API_KEY` | AI 服务 API Key | 否 |
+|------|------|:----:|
+| `JWT_SECRET` | JWT 签名密钥（≥32 字符随机串） | ✅ |
+| `ADMIN_USER_IDS` | 班管 ID（逗号分隔，格式 YYCC00） | — |
+| `DEV_PASSWORD` | 开发者测试账号密码（ID: 999999） | — |
+| `QWEATHER_KEY` | 和风天气 API Key | — |
+| `AI_API_KEY` | AI 服务 API Key（OpenAI 兼容） | — |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key | — |
+| `TAVILY_API_KEY` | Tavily 联网搜索 API Key | — |
+| `COHORT` | 届数（跨班级中继过滤） | — |
+| `TAILSCALE_ENABLED` | 启用 Tailscale 组网中继 | — |
 
-## 可选服务集成
+---
 
-| 服务 | 用途 | 环境变量 |
-|------|------|---------|
-| [和风天气](https://dev.qweather.com/) | 天气数据 | `QWEATHER_KEY`, `QWEATHER_LOCATION` |
-| OpenAI 兼容 API | AI 对话 | `AI_API_KEY`, `AI_API_URL` |
-| [DeepSeek](https://platform.deepseek.com/) | AI 对话 | `DEEPSEEK_API_KEY` |
-| [Tavily](https://tavily.com/) | AI 联网搜索 | `TAVILY_API_KEY` |
-| [Tailscale](https://tailscale.com/) | 跨网络中继组网 | `TAILSCALE_ENABLED`, `TAILSCALE_RELAY_IP` |
-| [Syncthing](https://syncthing.net/) | 资源文件同步 | `SYNCTHING_API_KEY` |
+## 🔌 可选集成
 
-## 开发
+| 服务 | 用途 | 配置变量 |
+|------|------|----------|
+| [和风天气](https://dev.qweather.com/) | 天气数据 + 预警 | `QWEATHER_*` |
+| OpenAI 兼容 API | AI 对话（支持任意兼容提供商） | `AI_*` |
+| [DeepSeek](https://platform.deepseek.com/) | 国产 AI 对话 | `DEEPSEEK_*` |
+| [Tavily](https://tavily.com/) | AI 联网实时搜索 | `TAVILY_*` |
+| [Tailscale](https://tailscale.com/) | 跨教室 VPN 组网中继 | `TAILSCALE_*` |
+| [Syncthing](https://syncthing.net/) | Resources 文件跨机同步 | `SYNCTHING_*` |
+
+---
+
+## 🛠️ 开发
 
 ```bash
-# 启动开发服务器（前后端同时启动）
-pnpm dev
-
-# 仅启动后端
-pnpm dev:server
-
-# 仅启动前端
-pnpm dev:client
-
-# 构建前端
-pnpm build
+pnpm dev           # 前后端同时启动
+pnpm dev:server    # 仅后端 :9001
+pnpm dev:client    # 仅前端 :5001
+pnpm build         # 生产构建
 ```
 
-### 代码规范
+### 代码约定
 
-- JavaScript（非 TypeScript），兼容 ES2017
-- Vue 2 Options API
-- 禁止使用外部 CDN，所有资源需本地化或通过服务器中转
-- 目标设备为横屏平板，需考虑触控交互和屏幕空间利用
+- ES2017 JavaScript（`var` 声明风格）
+- Vue 2 Options API（非 Composition API）
+- 单引号、2 空格缩进、kebab-case 文件名
+- 所有静态资源本地化，不使用外部 CDN
+- 目标设备为横屏平板，触控优先，最小触摸区域 44px
 
-## License
+---
 
-MIT
+## 📄 License
+
+MIT © ClassNet Contributors
