@@ -2477,8 +2477,21 @@ export default {
       var forwardData = self.pendingForward;
       var isCommunityForward = !!forwardData.postId;
       var isMusicPlaylist = self.pendingForwardType === 'music_playlist' || !!forwardData.playlistId;
-      var msgType = isMusicPlaylist ? 'music_playlist' : (isCommunityForward ? 'community_forward' : 'text');
-      var content = isCommunityForward ? JSON.stringify(forwardData) : (isMusicPlaylist ? JSON.stringify(forwardData) : forwardData.content);
+      var isAiForward = self.pendingForwardType === 'ai_forward';
+      var msgType = isMusicPlaylist ? 'music_playlist' : (isCommunityForward ? 'community_forward' : (isAiForward ? 'ai_forward' : 'text'));
+      var content;
+      if (isCommunityForward) {
+        content = JSON.stringify(forwardData);
+      } else if (isMusicPlaylist) {
+        content = JSON.stringify(forwardData);
+      } else if (isAiForward) {
+        content = JSON.stringify({
+          content: forwardData.content,
+          role: forwardData.role || 'assistant'
+        });
+      } else {
+        content = forwardData.content;
+      }
 
       // Optimistic local add so sender sees the forwarded message immediately
       var user = self.currentUser;
@@ -2528,6 +2541,12 @@ export default {
       }
 
       self.showForwardModal = false;
+      self.pendingForward = null;
+      self.pendingForwardType = 'community_forward';
+
+      // AI 转发：用户已在聊天页，消息会立即出现，无需弹出成功对话框
+      if (isAiForward) return;
+
       var targetName = '公共聊天室';
       if (self.isGroupChat(chatId)) {
         var group = self.groups.find(function(g) { return g.group_id === chatId; });
@@ -2538,8 +2557,6 @@ export default {
       }
       self.forwardSuccessTarget = targetName;
       self.showForwardSuccess = true;
-      self.pendingForward = null;
-      self.pendingForwardType = 'community_forward';
     },
     cancelForward: function() {
       this.showForwardModal = false;

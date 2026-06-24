@@ -47,6 +47,14 @@
         </div>
         <div class="forward-action">点击打开歌单 <i class="fa-solid fa-chevron-right"></i></div>
       </div>
+      <div v-else-if="message.type === 'ai_forward'" class="bubble-content bubble-forward bubble-ai" @click="onAiForwardClick">
+        <div class="forward-label"><i class="fa-solid fa-robot"></i> AI对话内容</div>
+        <div class="forward-card forward-card-ai">
+          <div class="forward-title">🤖 {{ aiForwardRoleLabel }}</div>
+          <div class="forward-preview">{{ aiForwardPreviewText }}</div>
+        </div>
+        <div class="forward-action">点击查看全文 <i class="fa-solid fa-chevron-right"></i></div>
+      </div>
       <div v-else class="bubble-content">
         <div v-if="message.reply_to" class="reply-quote" @click="onReplyQuoteClick">
           <div class="reply-quote-name">{{ message.reply_to.user_name }}</div>
@@ -176,6 +184,24 @@ export default {
         return {};
       }
     },
+    aiForwardData: function() {
+      if (this.message.type !== 'ai_forward') return {};
+      try {
+        return JSON.parse(this.message.content);
+      } catch (e) {
+        return {};
+      }
+    },
+    aiForwardRoleLabel: function() {
+      return this.aiForwardData.role === 'user' ? '用户提问' : 'AI 回答';
+    },
+    aiForwardPreviewText: function() {
+      var text = this.aiForwardData.content || '';
+      if (!text) return '';
+      // 去除 Markdown 标记符号，生成纯文本预览
+      var plain = text.replace(/[#*`>\-\[\]()!]/g, '').replace(/\n+/g, ' ').trim();
+      return plain.length > 50 ? plain.substring(0, 50) + '...' : plain;
+    },
     forwardTypeLabel: function() {
       var t = this.forwardData.postType;
       if (t === 'food') return '美食推荐';
@@ -256,6 +282,13 @@ export default {
       var data = this.playlistData;
       if (data.playlistId) {
         this.$router.push('/music?playlist=' + data.playlistId);
+      }
+    },
+    onAiForwardClick: function() {
+      var data = this.aiForwardData;
+      if (data.content) {
+        // 跳转到AI聊天页面查看完整内容
+        this.$router.push('/ai-chat?view=' + encodeURIComponent(data.content));
       }
     },
     formatTime: function(timestamp) {
@@ -599,6 +632,23 @@ export default {
 
 .forward-music-icon i {
   display: block;
+}
+
+/* AI forward card */
+.bubble-ai .forward-label {
+  color: var(--accent-ai, #007aff);
+}
+
+.own-bubble .bubble-ai .forward-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.forward-card-ai {
+  border-left-color: var(--accent-ai, #007aff);
+}
+
+.own-bubble .forward-card-ai {
+  border-left-color: rgba(255, 255, 255, 0.6);
 }
 
 /* Reply quote */

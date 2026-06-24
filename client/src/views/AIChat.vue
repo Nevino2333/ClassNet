@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="aichat-page">
     <AppNavBar title="小深">
       <template slot="actions">
@@ -191,19 +191,25 @@
                   <span class="error-text">{{ msg.error }}</span>
                   <button class="retry-btn" @click="retryMessage(msg)">重试</button>
                 </div>
-                <!-- AI message actions (copy + regenerate) -->
+                <!-- AI message actions (copy + regenerate + forward) -->
                 <div v-if="msg.role === 'assistant' && msg.content && !isStreaming" class="msg-actions">
                   <button class="msg-action-btn" @click="copyRawMarkdown(msg.content)" title="复制原始 Markdown">
                     <i class="fa-regular fa-copy"></i>
+                  </button>
+                  <button class="msg-action-btn" @click="showForwardMenu(msg)" title="转发">
+                    <i class="fa-solid fa-share"></i>
                   </button>
                   <button v-if="idx === currentMessages.length - 1" class="msg-action-btn" @click="regenerateMessage(msg)" title="重新生成">
                     <i class="fa-solid fa-rotate"></i>
                   </button>
                 </div>
-                <!-- User message actions (edit) -->
+                <!-- User message actions (edit + forward) -->
                 <div v-if="msg.role === 'user' && !isStreaming" class="msg-actions msg-actions-user">
                   <button class="msg-action-btn" @click="editMessage(msg)" title="编辑消息">
                     <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="msg-action-btn" @click="showForwardMenu(msg)" title="转发">
+                    <i class="fa-solid fa-share"></i>
                   </button>
                 </div>
               </div>
@@ -343,6 +349,33 @@
         <button class="fallback-notice-close" @click="showFallbackNotice = false"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </transition>
+
+    <!-- Forward Selection Sheet -->
+    <div v-if="showForwardDialog" class="forward-overlay" @click.self="showForwardDialog = false">
+      <div class="forward-sheet">
+        <div class="forward-sheet-title">转发到</div>
+        <button class="forward-option" @click="forwardToCommunity(forwardingMessage)">
+          <i class="fa-solid fa-comments"></i>
+          <span>论坛</span>
+        </button>
+        <button class="forward-option" @click="forwardToChat(forwardingMessage)">
+          <i class="fa-solid fa-comment"></i>
+          <span>聊天</span>
+        </button>
+        <button class="forward-cancel" @click="showForwardDialog = false">取消</button>
+      </div>
+    </div>
+
+    <!-- AI Content Viewer (from chat forward) -->
+    <div v-if="viewerContent" class="viewer-overlay" @click.self="viewerContent = null">
+      <div class="viewer-panel">
+        <div class="viewer-header">
+          <span class="viewer-title">🤖 AI对话内容</span>
+          <button class="viewer-close" @click="viewerContent = null"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="viewer-body scrollbar-thin markdown-body" v-html="renderMarkdown(viewerContent)"></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -447,6 +480,9 @@ export default {
       showConvSettings: false,
       convPersona: '',
       showFallbackNotice: false,
+      showForwardDialog: false,
+      forwardingMessage: null,
+      viewerContent: null,
       promptTemplates: [
         { icon: 'fa-solid fa-graduation-cap', title: '学术问题', prompt: '请详细解释量子纠缠的原理，并举一个通俗的类比' },
         { icon: 'fa-solid fa-laptop-code', title: '编程开发', prompt: '用 Python 实现一个 LRU 缓存，要求 O(1) 读写' },
@@ -1224,6 +1260,43 @@ export default {
       } else {
         self.fallbackCopy(content);
       }
+    },
+    showForwardMenu: function(msg) {
+      this.forwardingMessage = msg;
+      this.showForwardDialog = true;
+    },
+    forwardToCommunity: function(msg) {
+      this.showForwardDialog = false;
+      if (!msg || !msg.content) return;
+      var content = msg.content;
+      var title = content.substring(0, 30).replace(/[#*`\n]/g, '').trim() || 'AI对话分享';
+      var postData = {
+        type: 'forum',
+        title: '🤖 ' + title,
+        content: '> 以下内容来自AI对话\n\n' + content,
+        is_anonymous: false
+      };
+      var self = this;
+      api.post('/community/posts', postData).then(function(res) {
+        if (res.data.code === 200) {
+          self.$store.commit('toast/SHOW_TOAST', { message: '已转发到论坛', type: 'success' });
+          setTimeout(function() {
+            self.$router.push('/community?post=' + res.data.data.id);
+          }, 1000);
+        }
+      }).catch(function() {
+        self.$store.commit('toast/SHOW_TOAST', { message: '转发失败', type: 'error' });
+      });
+    },
+    forwardToChat: function(msg) {
+      this.showForwardDialog = false;
+      if (!msg || !msg.content) return;
+      var forwardData = {
+        content: msg.content,
+        role: msg.role,
+        timestamp: new Date().toISOString()
+      };
+      this.$router.push('/chat?forward=' + encodeURIComponent(JSON.stringify(forwardData)) + '&forwardType=ai_forward');
     },
     regenerateMessage: function(msg) {
       var self = this;
@@ -3254,5 +3327,109 @@ export default {
   .toast-slide-leave-to {
     transform: translateY(-20px);
   }
+}
+
+/* Forward Selection Sheet (iOS-style) */
+.forward-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.forward-sheet {
+  background: var(--bg-color, #fff);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 500px;
+  padding: 8px 0 20px;
+  animation: forwardSlideUp 0.3s ease;
+}
+@keyframes forwardSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.forward-sheet-title {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-color-secondary, #999);
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--separator-color, #e5e5ea);
+}
+.forward-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--text-color, #000);
+  cursor: pointer;
+}
+.forward-option:active { background: var(--bg-color-secondary, #f5f5f5); }
+.forward-option i { width: 24px; text-align: center; color: var(--text-color-secondary, #999); }
+.forward-cancel {
+  width: 100%;
+  padding: 16px;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  border-top: 0.5px solid var(--separator-color, #e5e5ea);
+  font-size: 16px;
+  color: var(--text-color, #000);
+  cursor: pointer;
+}
+
+/* AI Content Viewer */
+.viewer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.viewer-panel {
+  background: var(--bg-color, #fff);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--separator-color, #e5e5ea);
+}
+.viewer-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color, #000);
+}
+.viewer-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-color-secondary, #999);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.viewer-body {
+  padding: 20px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-color, #000);
 }
 </style>
