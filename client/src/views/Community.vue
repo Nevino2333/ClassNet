@@ -160,7 +160,7 @@
                   </div>
                   <button v-if="!hasVoted(post)" class="btn-primary poll-submit-btn" @click.stop="submitSurveyVote(post)">提交问卷</button>
                 </div>
-                <div v-else class="post-preview markdown-body" v-html="renderMarkdown(post.content)"></div>
+                <div v-else class="post-preview">{{ getPostPreview(post.content) }}</div>
                 <div v-if="getPlaylistShare(post)" class="playlist-share-card" @click.stop="openPlaylistFromPost(post)">
                   <div class="playlist-share-icon"><i class="fa-solid fa-music"></i></div>
                   <div class="playlist-share-info">
@@ -353,7 +353,7 @@
                         <span v-if="post.anonymous" class="post-type-badge anon">匿名</span>
                       </div>
                       <div v-if="post.title" class="post-title">{{ post.title }}</div>
-                      <div class="post-preview markdown-body" v-html="renderMarkdown(post.content)"></div>
+                      <div class="post-preview">{{ getPostPreview(post.content) }}</div>
                       <div class="post-stats">
                         <span class="stat-item"><i class="fa-regular fa-heart"></i> {{ post.like_count || 0 }}</span>
                         <span class="stat-item"><i class="fa-regular fa-comment"></i> {{ post.comment_count || 0 }}</span>
@@ -402,7 +402,7 @@
                       </div>
                       <div v-if="post.title" class="post-title">{{ post.title }}</div>
                       <span v-if="post.featured" class="featured-badge"><i class="fa-solid fa-star"></i> 精选</span>
-                      <div class="post-preview markdown-body" v-html="renderMarkdown(post.content)"></div>
+                      <div class="post-preview">{{ getPostPreview(post.content) }}</div>
                       <div class="post-tags" v-if="post.tags && post.tags.length > 0">
                         <span v-for="tag in post.tags" :key="tag" class="tag-badge" @click.stop="selectTag(tag)">{{ tag }}</span>
                       </div>
@@ -833,6 +833,9 @@
               <button class="toolbar-btn" :class="{ active: showEmojiPicker }" @click="toggleEmojiPicker" title="表情">
                 <i class="fa-regular fa-face-smile"></i>
               </button>
+              <button class="toolbar-btn" @click="showCloudPicker = true" title="云盘图片">
+                <i class="fa-solid fa-cloud"></i>
+              </button>
               <div class="char-counter" :class="{ over: isContentOverLimit }">{{ contentCharCount }}/{{ maxContentLength }}</div>
             </div>
             <div v-if="showEmojiPicker" class="emoji-picker">
@@ -1034,6 +1037,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Cloud Image Picker -->
+    <CloudImagePicker
+      v-if="showCloudPicker"
+      @select="onCloudImageSelect"
+      @close="showCloudPicker = false"
+    />
   </div>
 </template>
 
@@ -1042,6 +1052,7 @@ import AppNavBar from '@/components/AppNavBar.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue';
+import CloudImagePicker from '@/components/CloudImagePicker.vue';
 import api from '@/utils/api';
 import helpers from '@/utils/helpers';
 import wsManager from '@/utils/websocket';
@@ -1105,7 +1116,7 @@ marked.setOptions({
 
 export default {
   name: 'Community',
-  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton },
+  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker },
   data: function() {
     return {
       tabs: [
@@ -1129,6 +1140,7 @@ export default {
       showPostModal: false,
       showPostPreview: false,
       showEmojiPicker: false,
+      showCloudPicker: false,
       newPost: { content: '', title: '', groupIds: [], isAnonymous: false, type: 'forum', tags: [], foodForm: { dish_name: '', canteen: '', window: '' }, hotForm: { title: '', location: '' }, pollForm: { title: '', options: ['', ''], allowMultiple: false, maxChoices: 1 }, surveyForm: { title: '', questions: [{ question: '', type: 'text', options: [] }] } },
       showCreateFood: false,
       foodForm: { dish_name: '', canteen: '', window: '', reason: '' },
@@ -1654,6 +1666,11 @@ export default {
     },
     insertEmoji: function(emoji) {
       this.newPost.content = this.newPost.content + emoji;
+    },
+    onCloudImageSelect: function(file) {
+      // 插入 Markdown 格式的云盘图片
+      this.newPost.content += '![' + file.name + '](/api/cloud/files/' + encodeURIComponent(file.name) + ')';
+      this.showCloudPicker = false;
     },
     toggleEmojiPicker: function() {
       this.showEmojiPicker = !this.showEmojiPicker;
@@ -2216,6 +2233,21 @@ export default {
       result.html = DOMPurify.sanitize(result.html);
       var html = LatexRenderer.renderFinalHtml(result.html, result.placeholders);
       return html;
+    },
+    // 生成纯文本预览，用于列表页性能优化
+    getPostPreview: function(content) {
+      if (!content) return '';
+      // 去除 Markdown 和 LaTeX 标记，生成纯文本预览
+      var text = content
+        .replace(/```[\s\S]*?```/g, '') // 移除代码块
+        .replace(/\$\$[\s\S]*?\$\$/g, '') // 移除块级 LaTeX
+        .replace(/\$[\s\S]*?\$/g, '') // 移除行内 LaTeX
+        .replace(/\\[\s\S]*?\\[\s\S]*?/g, '') // 移除 LaTeX 环境
+        .replace(/\[.*?\]\(.*?\)/g, '') // 移除链接
+        .replace(/[#*`>\-\[\]()!]/g, '') // 移除 Markdown 标记
+        .replace(/\n+/g, ' ') // 换行转空格
+        .trim();
+      return text.length > 100 ? text.substring(0, 100) + '...' : text;
     },
     canDeleteComment: function(comment) {
       var user = this.currentUser;

@@ -172,7 +172,8 @@ export default {
     return {
       showContextMenu: false,
       longPressTimer: null,
-      longPressFired: false
+      longPressFired: false,
+      longPressImageUrl: null
     };
   },
   computed: {
@@ -288,6 +289,12 @@ export default {
     onContentClick: function(e) {
       var target = e.target;
       while (target && target !== e.currentTarget) {
+        // 处理图片点击（阻止默认行为）
+        if (target.tagName === 'IMG' && target.classList.contains('msg-image')) {
+          e.preventDefault();
+          return;
+        }
+        // 处理链接点击
         if (target.tagName === 'A' && target.getAttribute('data-external') === 'true') {
           e.preventDefault();
           var href = target.getAttribute('href');
@@ -361,25 +368,51 @@ export default {
     },
     renderContent: function(content) {
       if (!content) return '';
-      // Step 1: Extract URLs and replace with placeholders
+      // Step 1: Extract image URLs and replace with placeholders
+      var imageUrls = [];
+      var text = content.replace(/(\/api\/cloud\/files\/[^\s<>"]+|\/resources\/[^\s<>"]+)/g, function(url) {
+        // 检查是否是图片 URL（通过扩展名判断）
+        var lowerUrl = url.toLowerCase();
+        if (lowerUrl.indexOf('.jpg') > -1 || lowerUrl.indexOf('.jpeg') > -1 ||
+            lowerUrl.indexOf('.png') > -1 || lowerUrl.indexOf('.gif') > -1 ||
+            lowerUrl.indexOf('.webp') > -1 || lowerUrl.indexOf('.bmp') > -1 ||
+            lowerUrl.indexOf('/photos/') > -1) {
+          imageUrls.push(url);
+          return '%%IMG' + (imageUrls.length - 1) + '%%';
+        }
+        return url;
+      });
+      // Step 2: Extract other URLs and replace with placeholders
       var urls = [];
-      var text = content.replace(/(https?:\/\/[^\s<>"]+)/g, function(url) {
+      text = text.replace(/(https?:\/\/[^\s<>"]+)/g, function(url) {
         urls.push(url);
         return '%%URL' + (urls.length - 1) + '%%';
       });
-      // Step 2: HTML-escape
+      // Step 3: HTML-escape
       var html = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
-      // Step 3: Apply search highlighting
+      // Step 4: Apply search highlighting
       if (this.searchTerm) {
         var escaped = this.searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         var regex = new RegExp('(' + escaped + ')', 'gi');
         html = html.replace(regex, '<mark class="search-highlight">$1</mark>');
       }
-      // Step 4: Restore URLs as clickable links
+      // Step 5: Restore image URLs as img tags
+      for (var i = 0; i < imageUrls.length; i++) {
+        var placeholder = '%%IMG' + i + '%%';
+        var imgUrl = imageUrls[i];
+        var escapedUrl = imgUrl
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        var imgHtml = '<img src="' + escapedUrl + '" class="msg-image" data-image-url="' + escapedUrl + '" loading="lazy" />';
+        html = html.replace(placeholder, imgHtml);
+      }
+      // Step 6: Restore other URLs as clickable links
       for (var i = 0; i < urls.length; i++) {
         var placeholder = '%%URL' + i + '%%';
         var url = urls[i];
@@ -400,13 +433,31 @@ export default {
     onTouchStart: function(e) {
       var self = this;
       self.longPressFired = false;
+      self.longPressImageUrl = null;
+
+      // 检测触摸点是否在图片上
+      var touch = e.touches[0];
+      var target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target && target.tagName === 'IMG' && target.classList.contains('msg-image')) {
+        self.longPressImageUrl = target.getAttribute('data-image-url');
+      }
+
       self.longPressTimer = setTimeout(function() {
         self.longPressFired = true;
-        self.$emit('context-menu', self.message, {
-          clientX: e.touches[0].clientX,
-          clientY: e.touches[0].clientY,
-          preventDefault: function() {}
-        });
+        // 如果长按的是图片，弹出图片菜单
+        if (self.longPressImageUrl) {
+          self.$emit('image-context-menu', self.message, self.longPressImageUrl, {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            preventDefault: function() {}
+          });
+        } else {
+          self.$emit('context-menu', self.message, {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            preventDefault: function() {}
+          });
+        }
       }, 600);
     },
     onTouchEnd: function() {
@@ -826,6 +877,27 @@ export default {
 
 .own-bubble >>> .msg-link {
   color: #fff;
+}
+
+/* Message image */
+.chat-bubble >>> .msg-image {
+  max-width: 200px;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: 4px 0;
+  display: block;
+  cursor: pointer;
+  object-fit: cover;
+}
+
+.own-bubble >>> .msg-image {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-bubble:not(.own-bubble) >>> .msg-image {
+  background: var(--bg-color);
 }
 
 /* Unread divider */

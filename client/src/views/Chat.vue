@@ -198,6 +198,7 @@
               :senderTitle="getSenderTitle(msg.sender_id || msg.user_id)"
               @recall="recallMessage"
               @context-menu="openContextMenu"
+              @image-context-menu="openImageContextMenu"
               @toggle-reaction="toggleReaction"
               @scroll-to="scrollToMessage"
             />
@@ -214,6 +215,7 @@
           <div class="input-wrapper">
             <button class="emoji-toggle" @click="showEmoji = !showEmoji"><i class="fa-regular fa-face-smile"></i></button>
             <EmojiPicker :visible="showEmoji" @select="insertEmoji" />
+            <button class="cloud-toggle" @click="showCloudPicker = true" title="云盘图片"><i class="fa-solid fa-cloud"></i></button>
             <textarea
               v-model="inputText"
               class="chat-input"
@@ -251,6 +253,24 @@
           </button>
           <button v-if="contextMenuTarget && isOwnMessage(contextMenuTarget)" class="ctx-item ctx-item-danger" @click="handleContextAction('delete')">
             <i class="fa-solid fa-trash"></i> 删除
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Image Context Menu -->
+    <transition name="fade-quick">
+      <div v-if="showImageContextMenu" class="context-menu-overlay" @click="closeImageContextMenu">
+        <div
+          class="context-menu-popup"
+          :style="{ top: imageContextMenuPos.y + 'px', left: imageContextMenuPos.x + 'px' }"
+          @click.stop
+        >
+          <button class="ctx-item" @click="saveImageToCloud">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
+          </button>
+          <button class="ctx-item" @click="copyImageUrl">
+            <i class="fa-regular fa-copy"></i> 复制图片链接
           </button>
         </div>
       </div>
@@ -616,6 +636,13 @@
         </div>
       </div>
     </transition>
+
+    <!-- Cloud Image Picker -->
+    <CloudImagePicker
+      v-if="showCloudPicker"
+      @select="onCloudImageSelect"
+      @close="showCloudPicker = false"
+    />
   </div>
 </template>
 
@@ -623,6 +650,7 @@
 import ChatBubble from '@/components/ChatBubble.vue';
 import EmojiPicker from '@/components/EmojiPicker.vue';
 import AppNavBar from '@/components/AppNavBar.vue';
+import CloudImagePicker from '@/components/CloudImagePicker.vue';
 import helpers from '@/utils/helpers';
 import wsManager from '@/utils/websocket';
 import { autoConnect } from '@/utils/websocket';
@@ -633,7 +661,8 @@ export default {
   components: {
     ChatBubble: ChatBubble,
     EmojiPicker: EmojiPicker,
-    AppNavBar: AppNavBar
+    AppNavBar: AppNavBar,
+    CloudImagePicker: CloudImagePicker
   },
   data: function() {
     return {
@@ -641,6 +670,7 @@ export default {
       currentChat: 'public',
       inputText: '',
       showEmoji: false,
+      showCloudPicker: false,
       showCreateGroup: false,
       newGroupName: '',
       newGroupMembers: [],
@@ -690,6 +720,10 @@ export default {
       showContextMenu: false,
       contextMenuTarget: null,
       contextMenuPos: { x: 0, y: 0 },
+      // Image context menu
+      showImageContextMenu: false,
+      imageContextMenuUrl: null,
+      imageContextMenuPos: { x: 0, y: 0 },
       // Reaction picker
       showReactionPicker: false,
       reactionPickerTarget: null,
@@ -1756,7 +1790,11 @@ export default {
     sendMessage: function(options) {
       var self = this;
       var isForward = !!(options && options.forwardData);
-      var content = isForward ? JSON.stringify(options.forwardData) : self.inputText.trim();
+      var rawContent = isForward ? JSON.stringify(options.forwardData) : self.inputText.trim();
+      // 将云盘图片标记转换为实际 URL
+      var content = rawContent.replace(/\[cloud-img:([^\]]+)\]/g, function(match, filename) {
+        return '/api/cloud/files/' + encodeURIComponent(filename);
+      });
       var msgType = isForward ? 'community_forward' : 'text';
       if (!content || self.sending) return;
       var user = self.currentUser;
@@ -1816,6 +1854,11 @@ export default {
     insertEmoji: function(emoji) {
       this.inputText += emoji;
       this.showEmoji = false;
+    },
+    onCloudImageSelect: function(file) {
+      // 插入云盘图片标记，发送时会被转换为实际 URL
+      this.inputText += '[cloud-img:' + file.name + ']';
+      this.showCloudPicker = false;
     },
     scrollToBottom: function() {
       var self = this;
@@ -2634,6 +2677,76 @@ export default {
       this.showContextMenu = false;
       this.contextMenuTarget = null;
     },
+    // Image context menu
+    openImageContextMenu: function(msg, imageUrl, event) {
+      var x = event.clientX;
+      var y = event.clientY;
+      // Adjust position to avoid overflow
+      var menuWidth = 160;
+      var menuHeight = 100;
+      if (x + menuWidth > window.innerWidth) {
+        x = window.innerWidth - menuWidth - 8;
+      }
+      if (y + menuHeight > window.innerHeight) {
+        y = window.innerHeight - menuHeight - 8;
+      }
+      this.imageContextMenuUrl = imageUrl;
+      this.imageContextMenuPos = { x: x, y: y };
+      this.showImageContextMenu = true;
+    },
+    closeImageContextMenu: function() {
+      this.showImageContextMenu = false;
+      this.imageContextMenuUrl = null;
+    },
+    saveImageToCloud: function() {
+      var self = this;
+      var imageUrl = self.imageContextMenuUrl;
+      self.closeImageContextMenu();
+
+      if (!imageUrl) return;
+
+      // 调用后端 API 转存图片
+      api.post('/cloud/save-from-url', { url: imageUrl }).then(function(res) {
+        if (res.data.code === 200) {
+          self.$store.commit('toast/SHOW_TOAST', { message: '图片已转存到云盘', type: 'success' });
+        } else {
+          self.$store.commit('toast/SHOW_TOAST', { message: res.data.message || '转存失败', type: 'error' });
+        }
+      }).catch(function(err) {
+        console.error('转存图片失败:', err);
+        self.$store.commit('toast/SHOW_TOAST', { message: '转存失败，请重试', type: 'error' });
+      });
+    },
+    copyImageUrl: function() {
+      var self = this;
+      var imageUrl = self.imageContextMenuUrl;
+      self.closeImageContextMenu();
+
+      if (!imageUrl) return;
+
+      // 复制图片 URL
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(imageUrl).then(function() {
+          self.$store.commit('toast/SHOW_TOAST', { message: '图片链接已复制', type: 'success' });
+        }).catch(function() {
+          self.$store.commit('toast/SHOW_TOAST', { message: '复制失败', type: 'error' });
+        });
+      } else {
+        var textarea = document.createElement('textarea');
+        textarea.value = imageUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          self.$store.commit('toast/SHOW_TOAST', { message: '图片链接已复制', type: 'success' });
+        } catch (e) {
+          self.$store.commit('toast/SHOW_TOAST', { message: '复制失败', type: 'error' });
+        }
+        document.body.removeChild(textarea);
+      }
+    },
     handleContextAction: function(action) {
       var self = this;
       var msg = self.contextMenuTarget;
@@ -3404,6 +3517,29 @@ export default {
 }
 
 .emoji-toggle:active {
+  transform: scale(0.92);
+  opacity: 0.7;
+}
+
+.cloud-toggle {
+  font-size: var(--font-size-subheadline);
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
+}
+
+.cloud-toggle:hover {
+  background: var(--bg-color);
+  color: var(--accent-ai);
+}
+
+.cloud-toggle:active {
   transform: scale(0.92);
   opacity: 0.7;
 }

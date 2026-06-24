@@ -247,6 +247,81 @@ router.delete('/note/:noteId', auth.requireAuth, function(req, res) {
   res.json({ code: 200, message: '删除成功' });
 });
 
+// 从 URL 保存图片到云盘
+router.post('/save-from-url', auth.requireAuth, function(req, res) {
+  var userId = req.user.user_id;
+  var imageUrl = req.body.url;
+
+  if (!imageUrl) {
+    return res.status(400).json({ code: 400, message: '缺少图片 URL' });
+  }
+
+  // 验证 URL 是否来自本站（安全考虑）
+  var allowedPrefixes = ['/api/cloud/files/', '/resources/', '/api/photos/'];
+  var isAllowed = false;
+  for (var i = 0; i < allowedPrefixes.length; i++) {
+    if (imageUrl.indexOf(allowedPrefixes[i]) === 0) {
+      isAllowed = true;
+      break;
+    }
+  }
+
+  if (!isAllowed) {
+    return res.status(400).json({ code: 400, message: '仅支持转存本站图片' });
+  }
+
+  // 构建完整的文件路径
+  var filePath;
+  if (imageUrl.indexOf('/api/cloud/files/') === 0) {
+    // 云盘图片：需要从其他用户的云盘获取（这里简化处理，只支持自己的云盘）
+    var filename = decodeURIComponent(imageUrl.replace('/api/cloud/files/', ''));
+    filePath = path.join(getUserDir(userId), 'photos', filename);
+  } else if (imageUrl.indexOf('/resources/') === 0) {
+    // Resources 目录下的图片
+    var resourcesDir = path.resolve(process.env.RESOURCES_DIR || path.join(__dirname, '../../../Resources'));
+    filePath = path.join(resourcesDir, imageUrl.replace('/resources/', ''));
+  } else if (imageUrl.indexOf('/api/photos/') === 0) {
+    // Photos API 的图片
+    var resourcesDir = path.resolve(process.env.RESOURCES_DIR || path.join(__dirname, '../../../Resources'));
+    filePath = path.join(resourcesDir, 'public', 'photos', imageUrl.replace('/api/photos/', ''));
+  }
+
+  // 安全检查：防止路径遍历
+  if (filePath.indexOf('..') !== -1) {
+    return res.status(400).json({ code: 400, message: '无效的图片路径' });
+  }
+
+  // 检查文件是否存在
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ code: 404, message: '图片不存在' });
+  }
+
+  // 确保用户云盘目录存在
+  ensureUserDir(userId);
+  var photoDir = path.join(getUserDir(userId), 'photos');
+
+  // 生成新的文件名
+  var ext = path.extname(filePath) || '.jpg';
+  var newFilename = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + ext;
+  var newFilePath = path.join(photoDir, newFilename);
+
+  // 复制文件到用户云盘
+  try {
+    fs.copyFileSync(filePath, newFilePath);
+    res.json({
+      code: 200,
+      data: {
+        name: newFilename,
+        size: fs.statSync(newFilePath).size,
+        url: '/api/cloud/files/' + encodeURIComponent(newFilename)
+      }
+    });
+  } catch (e) {
+    console.error('[Cloud] 转存图片失败:', e);
+    res.status(500).json({ code: 500, message: '转存失败：' + e.message });
+  }
+});
+
 // Multer 错误处理中间件
 router.use(function(err, req, res, next) {
   if (err.code === 'LIMIT_FILE_SIZE') {
