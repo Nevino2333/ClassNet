@@ -4,6 +4,7 @@
   <img src="https://img.shields.io/badge/Vite-5.x-646cff?logo=vite" alt="Vite 5">
   <img src="https://img.shields.io/badge/pnpm-monorepo-f69220?logo=pnpm" alt="pnpm monorepo">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+  <img src="https://img.shields.io/badge/Vibe_Coding-AI_%2B_%E4%BA%BA%E5%B7%A5-ff6b6b?logo=openai" alt="Vibe Coding">
 </p>
 
 <h1 align="center">📱 ClassNet</h1>
@@ -13,6 +14,11 @@
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/node-18%2B-brightgreen?logo=nodedotjs" alt="Node 18+">
   <img src="https://img.shields.io/badge/database-SQLite-003b57?logo=sqlite" alt="SQLite">
+  <img src="https://img.shields.io/badge/author-Nevino-orange" alt="Author: Nevino">
+</p>
+
+<p align="center">
+  <sub>💡 本项目采用 <strong>Vibe Coding</strong> 开发模式 — 人类构思与指导 + AI 辅助编码实现</sub>
 </p>
 
 ---
@@ -259,6 +265,18 @@ pnpm build         # 生产构建
 
 ---
 
+## 👤 作者与致谢
+
+**Nevino** — 项目构思、需求定义与设计方向指导
+
+本项目采用 **Vibe Coding** 模式开发：人类负责构思产品形态、交互体验与功能规划，AI 辅助完成编码实现、测试与文档。这是一种「人机协作」的软件开发新范式——将创造力留给人类，将重复劳动交给机器。
+
+<p align="center">
+  <sub>✨ Crafted with ❤️ by <strong>Nevino</strong> · Powered by <strong>Claude Code</strong></sub>
+</p>
+
+---
+
 ## 📄 License
 
-MIT © ClassNet Contributors
+MIT © Nevino

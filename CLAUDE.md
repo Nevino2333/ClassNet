@@ -30,10 +30,12 @@ ClassNet/
 │   ├── mixins/           # Vue mixins
 │   └── main.js           # 入口
 ├── server/src/           # Node.js 后端源码
-│   ├── routes/           # API 路由
-│   ├── middleware/        # 中间件
-│   ├── ws/               # WebSocket 中继
-│   └── utils/            # 工具（db, jwt, cache...）
+│   ├── routes/           # API 路由（auth, chat, community, admin, setup… 共 15 个）
+│   ├── middleware/        # 中间件（限流、认证）
+│   ├── ws/               # WebSocket 聊天 + 中继
+│   ├── services/         # 业务服务（视频转码、中继总线）
+│   ├── utils/            # 工具（db, init-db, jwt, cache, crash-logger…）
+│   └── config/           # 配置模块
 ├── server/public/        # 构建产物（前端 dist + setup.html）
 ├── server/database/      # SQLite 数据库文件目录
 ├── Resources/            # 🔒 用户自行管理，AI 不得触碰
@@ -173,10 +175,16 @@ git health
 
 | 文件 | 用途 |
 |------|------|
-| `client/src/utils/latex-renderer.js` | LaTeX 渲染核心（支持完整文档 + 数学公式） |
+| `client/src/utils/latex-renderer.js` | LaTeX 渲染核心（完整文档 + 数学公式 + 声明式命令 + 分组作用域） |
 | `client/src/views/AIChat.vue` | AI 聊天页面（LaTeX 渲染的主要使用方） |
+| `client/src/views/Notes.vue` | 笔记（Markdown + LaTeX + Mermaid） |
+| `client/src/views/Community.vue` | 社区论坛（Markdown + LaTeX 渲染） |
 | `client/src/utils/api.js` | API 请求封装 |
-| `server/src/utils/db.js` | 数据库操作 |
+| `server/src/utils/db.js` | SQLite 数据库连接（WAL 模式、连接池） |
+| `server/src/utils/init-db.js` | 数据库初始化 + 迁移 + 预注册导入 |
+| `server/src/services/stream-transcoder.js` | 视频流式转码（ffmpeg） |
+| `server/src/routes/setup.js` | 初始化向导 API |
+| `server/public/setup.html` | 可视化初始化配置页面 |
 | `.git/fix-b2o-corruption.sh` | b→o 损坏自动修复脚本 |
 | `.git/hooks/pre-commit` | 提交前代码检查 |
 
@@ -187,20 +195,28 @@ git health
 ### 支持的内容形式
 1. ` ```latex ... ``` ` — Markdown 代码块中的 LaTeX（AI 回复常见）
 2. `\documentclass{...}...\begin{document}...` — 完整 LaTeX 文档
-3. `\colorbox{...}\textbf{...}` — LaTeX 正文片段（自动检测）
+3. `{\color{red}\textbf{...}}` — LaTeX 正文片段（自动检测，支持 {…} 分组作用域）
 4. `\begin{latex}...\end{latex}` — 显式标记
 
 ### 数学公式
 使用 KaTeX 渲染，支持 `$...$`、`$$...$$`、`\(...\)`、`\[...\]`。
 KaTeX 不支持的命令会回退为错误提示。
 
+### 支持的命令类型
+- **参数式**: `\textbf{text}`, `\textit{text}`, `\textcolor{color}{text}`, `\colorbox{bg}{text}`, `\fcolorbox{frame}{bg}{text}`, `\framebox{text}`, `\parbox{width}{text}`
+- **声明式**: `\color{name}`, `\pagecolor{name}`, `\sffamily`, `\rmfamily`, `\ttfamily`, `\bfseries`, `\itshape`, `\slshape`, `\scshape`（作用域受 {…} 分组控制）
+- **字体大小**: `\Huge`, `\huge`, `\LARGE`, `\Large`, `\large`, `\small`, `\footnotesize`, `\tiny`, `\normalsize`
+- **环境**: `\begin{center}...\end{center}`, `\begin{itemize}...\end{itemize}` 等
+
 ### 添加新 LaTeX 命令时
 在 `latex-renderer.js` 中修改：
 - `ARG_COMMANDS` — 单参数命令（\textbf{text} 类）
 - `SIZE_CLASS_MAP` — 字体大小命令
 - `SYMBOL_MAP` — 符号命令
+- `FONT_FAMILY_DECL` / `FONT_STYLE_DECL` — 声明式字体命令
 - `LATEX_BODY_COMMANDS` — 用于自动检测的命令列表
 - `beginEnvironment()` / `endEnvironment()` — 环境处理
+- `convertLatexBodyToHtml()` — 正文到 HTML 的主转换器
 
 ---
 

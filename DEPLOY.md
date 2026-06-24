@@ -1,4 +1,13 @@
-# ClassNet 部署文档
+<p align="center">
+  <img src="https://img.shields.io/badge/deploy-Windows%20%7C%20Linux-blue" alt="Deploy: Windows/Linux">
+  <img src="https://img.shields.io/badge/node-18%2B-brightgreen?logo=nodedotjs" alt="Node 18+">
+  <img src="https://img.shields.io/badge/database-SQLite-003b57?logo=sqlite" alt="SQLite">
+  <img src="https://img.shields.io/badge/Vibe_Coding-AI_%2B_%E4%BA%BA%E5%B7%A5-ff6b6b" alt="Vibe Coding">
+</p>
+
+# 📡 ClassNet 部署文档
+
+> 从零搭建到多机中继的完整指南
 
 ## 1. 系统要求
 
