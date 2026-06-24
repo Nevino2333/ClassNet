@@ -254,9 +254,7 @@ export default {
     },
     onMusicPlaylistClick: function() {
       var data = this.playlistData;
-      if (data.shareCode) {
-        this.$router.push('/music?shareCode=' + data.shareCode);
-      } else if (data.playlistId) {
+      if (data.playlistId) {
         this.$router.push('/music?playlist=' + data.playlistId);
       }
     },

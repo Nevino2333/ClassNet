@@ -161,6 +161,14 @@
                   <button v-if="!hasVoted(post)" class="btn-primary poll-submit-btn" @click.stop="submitSurveyVote(post)">提交问卷</button>
                 </div>
                 <div v-else class="post-preview markdown-body" v-html="renderMarkdown(post.content)"></div>
+                <div v-if="getPlaylistShare(post)" class="playlist-share-card" @click.stop="openPlaylistFromPost(post)">
+                  <div class="playlist-share-icon"><i class="fa-solid fa-music"></i></div>
+                  <div class="playlist-share-info">
+                    <div class="playlist-share-name">{{ getPlaylistShare(post).playlist_name || '歌单' }}</div>
+                    <div class="playlist-share-meta">{{ getPlaylistShare(post).song_count || 0 }} 首歌曲</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right playlist-share-arrow"></i>
+                </div>
                 <div class="post-tags" v-if="post.tags && post.tags.length > 0">
                   <span v-for="tag in post.tags" :key="tag" class="tag-badge" @click.stop="selectTag(tag)">{{ tag }}</span>
                 </div>
@@ -520,6 +528,14 @@
           </div>
           <div v-if="currentPost.title && currentPost.type === 'forum'" class="full-detail-title">{{ currentPost.title }}</div>
           <div v-if="currentPost.type !== 'poll' && currentPost.type !== 'survey'" class="full-detail-content markdown-body" v-html="renderMarkdown(currentPost.content)"></div>
+          <div v-if="getPlaylistShare(currentPost)" class="playlist-share-card" @click="openPlaylistFromPost(currentPost)">
+            <div class="playlist-share-icon"><i class="fa-solid fa-music"></i></div>
+            <div class="playlist-share-info">
+              <div class="playlist-share-name">{{ getPlaylistShare(currentPost).playlist_name || '歌单' }}</div>
+              <div class="playlist-share-meta">{{ getPlaylistShare(currentPost).song_count || 0 }} 首歌曲</div>
+            </div>
+            <i class="fa-solid fa-chevron-right playlist-share-arrow"></i>
+          </div>
           <div class="detail-tags" v-if="currentPost.tags && currentPost.tags.length > 0">
             <span v-for="tag in currentPost.tags" :key="tag" class="tag-badge" @click="selectTag(tag)">{{ tag }}</span>
           </div>
@@ -2029,6 +2045,19 @@ export default {
       self.newPostExtra = { playlist_id: plData.playlistId, playlist_name: plData.playlistName, song_count: plData.songCount };
       self.showPostModal = true;
     },
+    getPlaylistShare: function(post) {
+      try {
+        var extra = typeof post.extra_json === 'string' ? JSON.parse(post.extra_json) : (post.extra_json || {});
+        if (extra.playlist_id) return extra;
+        return null;
+      } catch (e) { return null; }
+    },
+    openPlaylistFromPost: function(post) {
+      var pl = this.getPlaylistShare(post);
+      if (pl && pl.playlist_id) {
+        this.$router.push('/music?playlist=' + pl.playlist_id);
+      }
+    },
     submitComment: function() {
       if (!this.commentText.trim() || !this.currentPost) return;
       var self = this;
@@ -2375,6 +2404,13 @@ export default {
 .remote-badge { display: inline-block; font-size: var(--font-size-caption2); font-weight: 600; color: #fff; background: var(--primary-color); border-radius: var(--radius-xs); padding: 1px 5px; margin-left: 4px; vertical-align: middle; line-height: 1.4; }
 .post-title { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .post-preview { font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.5; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 100%; margin-top: 3px; }
+.playlist-share-card { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 14px; border-radius: var(--radius-md); background: rgba(var(--primary-rgb), 0.06); border: 0.5px solid rgba(var(--primary-rgb), 0.15); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.playlist-share-card:hover { background: rgba(var(--primary-rgb), 0.12); border-color: var(--primary-color); }
+.playlist-share-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: rgba(var(--primary-rgb), 0.15); display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-size: 16px; flex-shrink: 0; }
+.playlist-share-info { flex: 1; min-width: 0; }
+.playlist-share-name { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.playlist-share-meta { font-size: var(--font-size-caption2); color: var(--text-tertiary); margin-top: 1px; }
+.playlist-share-arrow { color: var(--text-tertiary); font-size: var(--font-size-caption); flex-shrink: 0; }
 .post-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
 .tag-badge { display: inline-flex; align-items: center; gap: 3px; font-size: var(--font-size-caption2); padding: 1px 8px; border-radius: var(--radius-md); background: rgba(var(--primary-rgb),0.1); color: var(--primary-color); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .tag-badge:hover { background: rgba(var(--primary-rgb),0.2); }
