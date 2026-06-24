@@ -76,6 +76,8 @@ server/stream-cache/
 .claude/worktrees/
 .claude/memory/
 .claude/scheduled_tasks.json
+.claude/settings.local.json
+.claude/settings.json
 
 # 运行时数据（可能会被脚本误修改）
 *.bak
