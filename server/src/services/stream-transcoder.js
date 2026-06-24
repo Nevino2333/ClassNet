@@ -79,6 +79,24 @@ function _startCleanup() {
   }
 }
 
+var _hwEncoderCache = undefined;
+
+// 检测可用的硬件加速编码器（GPU 转码几乎不占 CPU，只检测一次）
+function _detectHardwareEncoder() {
+  if (_hwEncoderCache !== undefined) return _hwEncoderCache;
+  try {
+    var ffBin = _getFFmpegPath() || 'ffmpeg';
+    var out = require('child_process').execSync('"' + ffBin + '" -hide_banner -encoders 2>&1', {
+      encoding: 'utf8', timeout: 5000, windowsHide: true
+    });
+    if (out.indexOf('h264_qsv') !== -1) { _hwEncoderCache = 'qsv'; return 'qsv'; }
+    if (out.indexOf('h264_nvenc') !== -1) { _hwEncoderCache = 'nvenc'; return 'nvenc'; }
+    if (out.indexOf('h264_amf') !== -1) { _hwEncoderCache = 'amf'; return 'amf'; }
+  } catch (e) {}
+  _hwEncoderCache = null;
+  return null;
+}
+
 // 按优先级查找 ffmpeg 可执行文件路径
 function _findFFmpegPath() {
   var locations = [
@@ -154,24 +172,73 @@ function start(filePath) {
   var cacheDir = path.join(CACHE_DIR, hash);
   _ensureDir(cacheDir);
 
-  // 输出分片 MP4（fragmented mp4，支持渐进式流播放 + Range 拖动）
+  // 输出分片 MP4（fragmented mp4，支持流播放）
   var outputFile = path.join(cacheDir, 'output.mp4');
 
-  // 启动 ffmpeg — 转码为流式 MP4
-  var args = [
-    '-i', fullPath,
-    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
-    '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
-    '-movflags', 'frag_keyframe+empty_moov+faststart+default_base_moof',
-    '-f', 'mp4', '-y',
-    outputFile
-  ];
+  // 选择最优编码方案：硬件加速 > 软件轻量
+  var hwType = _detectHardwareEncoder();
+  var args;
+  if (hwType === 'qsv') {
+    // Intel Quick Sync — GPU 转码，几乎不占 CPU
+    args = [
+      '-hwaccel', 'qsv', '-qsv_device', 'auto',
+      '-i', fullPath,
+      '-c:v', 'h264_qsv', '-preset', 'veryfast', '-b:v', '2M', '-maxrate', '4M',
+      '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
+      '-movflags', 'frag_keyframe+empty_moov+faststart',
+      '-f', 'mp4', '-y',
+      outputFile
+    ];
+  } else if (hwType === 'nvenc') {
+    // NVIDIA NVENC — GPU 转码
+    args = [
+      '-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda',
+      '-i', fullPath,
+      '-c:v', 'h264_nvenc', '-preset', 'p1', '-tune', 'll', '-b:v', '2M', '-maxrate', '4M',
+      '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
+      '-movflags', 'frag_keyframe+empty_moov+faststart',
+      '-f', 'mp4', '-y',
+      outputFile
+    ];
+  } else if (hwType === 'amf') {
+    // AMD AMF — GPU 转码
+    args = [
+      '-hwaccel', 'auto',
+      '-i', fullPath,
+      '-c:v', 'h264_amf', '-usage', 'transcoding', '-quality', 'speed', '-b:v', '2M',
+      '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
+      '-movflags', 'frag_keyframe+empty_moov+faststart',
+      '-f', 'mp4', '-y',
+      outputFile
+    ];
+  } else {
+    // 纯 CPU — 极限轻量参数，限线程防卡死
+    args = [
+      '-threads', '2',
+      '-i', fullPath,
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'fastdecode', '-crf', '32',
+      '-vf', 'scale=trunc(iw/4)*2:trunc(ih/4)*2:flags=fast_bilinear',
+      '-c:a', 'aac', '-b:a', '96k', '-ac', '2',
+      '-movflags', 'frag_keyframe+empty_moov+faststart',
+      '-f', 'mp4', '-y',
+      outputFile
+    ];
+  }
+
+  console.log('[Transcoder] Starting with ' + (hwType || 'CPU') + ' for: ' + path.basename(fullPath));
 
   var ffmpegBin = _getFFmpegPath() || 'ffmpeg';
   var ffproc = spawn(ffmpegBin, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true
   });
+
+  // 降低 ffmpeg 进程优先级，避免卡死系统
+  try {
+    if (ffproc.pid) {
+      require('child_process').execSync('wmic process where ProcessId=' + ffproc.pid + ' CALL setpriority 64', { windowsHide: true });
+    }
+  } catch (e) {}
 
   var stderrChunks = [];
   ffproc.stderr.on('data', function(chunk) {

@@ -34,5 +34,5 @@ echo   Build complete!
 echo   To start the server:
 echo     cd server
 echo     node src/app.js
-echo   Then visit http://localhost:9000
+echo   Then visit http://localhost:9001
 echo ========================================

@@ -15,7 +15,7 @@ cd /d "%~dp0client"
 start "ClassNet Client" cmd /k "npx vite --host"
 echo.
 echo ClassNet is running!
-echo Access: http://localhost:9000
+echo Access: http://localhost:9001
 echo Admin: See ADMIN_USER_IDS in server/.env
 echo.
 pause >nul

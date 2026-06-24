@@ -63,8 +63,8 @@ goto menu
 
 :kill_ports
 echo [ClassNet] Checking ports...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9000 " ^| findstr "LISTENING" 2^>nul') do (
-    echo   Killing port 9000 PID %%a
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9001 " ^| findstr "LISTENING" 2^>nul') do (
+    echo   Killing port 9001 PID %%a
     taskkill /PID %%a /F >nul 2>&1
 )
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":10001 " ^| findstr "LISTENING" 2^>nul') do (
@@ -259,9 +259,9 @@ cd server
 start "ClassNet Server" /MIN cmd /c "node src\app.js"
 cd ..
 echo.
-echo [ClassNet] Server starting on ports 9000/10001/10011...
+echo [ClassNet] Server starting on ports 9001/10001/10011...
 echo [ClassNet] Check the minimized window for logs.
-echo [ClassNet] Use "cn status" or netstat -ano ^| findstr ":9000" to verify.
+echo [ClassNet] Use "cn status" or netstat -ano ^| findstr ":9001" to verify.
 if "%1"=="direct" goto end
 pause
 goto menu

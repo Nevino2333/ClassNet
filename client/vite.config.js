@@ -144,7 +144,7 @@ export default defineConfig({
     port: 5001,
     proxy: {
       '/api': {
-        target: 'http://localhost:9000',
+        target: 'http://localhost:9001',
         changeOrigin: true,
         timeout: 30000,
         proxyTimeout: 30000
@@ -154,7 +154,7 @@ export default defineConfig({
         ws: true
       },
       '/resources': {
-        target: 'http://localhost:9000',
+        target: 'http://localhost:9001',
         changeOrigin: true
       }
     }

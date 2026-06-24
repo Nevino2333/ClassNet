@@ -1,7 +1,7 @@
 var path = require('path');
 
 module.exports = {
-  port: process.env.PORT || 9000,
+  port: process.env.PORT || 9001,
   wsPort: process.env.WS_PORT || 10001,
   relayPort: process.env.RELAY_PORT || 10011,
   jwt: {

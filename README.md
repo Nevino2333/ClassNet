@@ -63,7 +63,7 @@ cd server && node src/utils/init-db.js && cd ..
 pnpm dev
 ```
 
-访问 http://localhost:5001（开发模式，Vite 自动代理 API 到 :9000）
+访问 http://localhost:5001（开发模式，Vite 自动代理 API 到 :9001）
 
 ### 生产构建
 
@@ -73,7 +73,7 @@ cp -r client/dist/* server/public/
 cd server && NODE_ENV=production node src/app.js
 ```
 
-访问 http://localhost:9000
+访问 http://localhost:9001
 
 > 详细部署说明请参阅 [DEPLOY.md](./DEPLOY.md)
 

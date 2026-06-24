@@ -14,8 +14,8 @@ call pm2 stop classnet-server >nul 2>&1
 call pm2 delete classnet-server >nul 2>&1
 
 echo [2/5] Checking port conflicts...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9000 " ^| findstr "LISTENING"') do (
-    echo Port 8000 is in use by PID %%a, stopping...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9001 " ^| findstr "LISTENING"') do (
+    echo Port 9001 is in use by PID %%a, stopping...
     taskkill /PID %%a /F >nul 2>&1
 )
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":10001 " ^| findstr "LISTENING"') do (
@@ -55,7 +55,7 @@ echo Build OK
 
 echo [5/5] Starting production server...
 echo.
-echo   HTTP:       http://localhost:9000
+echo   HTTP:       http://localhost:9001
 echo   WebSocket:  ws://localhost:10001
 echo   Relay:      ws://localhost:10011
 echo.

@@ -298,7 +298,8 @@ export default {
       newFolderName: '',
       showHistory: false,
       historyList: loadHistory(),
-      _videoPlayer: null
+      _videoPlayer: null,
+      _mkvFallbackUrl: null
     };
   },
   computed: {
@@ -590,19 +591,24 @@ export default {
       videoEl.setAttribute('preload', 'metadata');
       container.appendChild(videoEl);
 
-      // MKV → 服务端 ffmpeg 实时转码为分片 MP4
+      // MKV → 需预转码为 MP4（运行 Resources/视频批量转码MKV.bat）
       // 其他格式 → 直链播放
-      // 同时检查 extension 字段和文件路径（防止 API 返回缺少 extension 字段）
       var extFromItem = (self.previewItem && self.previewItem.extension || '').toLowerCase();
       var extFromPath = (self.previewFilePath || '').toLowerCase();
       var isMkv = extFromItem === 'mkv' || extFromPath.endsWith('.mkv');
       var videoSrc, videoType;
+
       if (isMkv) {
-        videoSrc = '/api/resources/stream?path=' + encodeURIComponent(self.previewFilePath) + '&_t=' + Date.now();
+        // 尝试同名 MP4，如果存在则播放
+        var mp4Path = self.previewFilePath.replace(/\.mkv$/i, '.mp4');
+        videoSrc = '/api/resources/preview?path=' + encodeURIComponent(mp4Path) + '&_t=' + Date.now();
         videoType = 'video/mp4';
+        // 同时提供原始流媒体转码作为回退（需 server 端 ffmpeg + 硬件加速）
+        self._mkvFallbackUrl = '/api/resources/stream?path=' + encodeURIComponent(self.previewFilePath) + '&_t=' + Date.now();
       } else {
         videoSrc = self.previewUrl;
         videoType = self._getVideoMimeType(self.previewItem);
+        self._mkvFallbackUrl = null;
       }
 
       self._videoPlayer = videojs(videoEl, {
@@ -655,22 +661,30 @@ export default {
           disableOnEnd: false
         }
       });
+      // MKV 文件：尝试同名 MP4 → 失败则回退到实时转码
+      var mkvRetryCount = 0;
       self._videoPlayer.on('error', function() {
         var error = self._videoPlayer.error();
-        // MEDIA_ERR_NETWORK 或 MKV 通常意味着服务端问题
+        // MKV 同名 MP4 不存在 → 自动回退到实时转码
+        if (isMkv && self._mkvFallbackUrl && mkvRetryCount === 0 && error && error.code === 4) {
+          mkvRetryCount++;
+          console.log('[MKV] MP4 not found, trying stream fallback...');
+          self._videoPlayer.src({ src: self._mkvFallbackUrl, type: 'video/mp4' });
+          self._videoPlayer.play();
+          return;
+        }
         if (error && error.code === 2) {
           self.$store.commit('toast/SHOW_TOAST', {
-            message: '网络错误：请检查服务器连接',
-            type: 'error'
+            message: '网络错误：请检查服务器连接', type: 'error'
           });
         } else if (error && error.code === 4) {
           self.$store.commit('toast/SHOW_TOAST', {
-            message: isMkv ? 'MKV 转码失败：请确认服务器已安装 ffmpeg，且视频编码为 H.264/VP9' : '视频格式不支持或文件已损坏',
+            message: isMkv ? '此 MKV 未转码且实时转码失败。请在服务器运行"视频批量转码MKV.bat"转为 MP4 后播放。' : '视频格式不支持或文件已损坏',
             type: 'error'
           });
         } else {
           self.$store.commit('toast/SHOW_TOAST', {
-            message: isMkv ? 'MKV 播放失败，请检查服务器 ffmpeg 是否安装' : '视频加载失败',
+            message: isMkv ? 'MKV 播放失败，请先转为 MP4' : '视频加载失败',
             type: 'error'
           });
         }

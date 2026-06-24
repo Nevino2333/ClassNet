@@ -59,7 +59,7 @@ module.exports = {
       kill_timeout: 10000,
       env: {
         NODE_ENV: 'production',
-        PORT: envVars.PORT || '9000',
+        PORT: envVars.PORT || '9001',
         WS_PORT: envVars.WS_PORT || '10001',
         RELAY_PORT: envVars.RELAY_PORT || '10011',
         RELAY_SERVER_ID: envVars.RELAY_SERVER_ID || 'server-a',

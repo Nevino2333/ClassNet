@@ -13,7 +13,7 @@ echo ""
 echo "[2/3] Starting backend server..."
 node src/app.js &
 SERVER_PID=$!
-echo "   Backend server started on port 9000 (PID: $SERVER_PID)"
+echo "   Backend server started on port 9001 (PID: $SERVER_PID)"
 echo ""
 
 echo "[3/3] Starting frontend dev server..."
@@ -28,7 +28,7 @@ echo "  ClassNet System is running!"
 echo "========================================"
 echo ""
 echo "  Frontend: http://localhost:5001"
-echo "  Backend:  http://localhost:9000"
+echo "  Backend:  http://localhost:9001"
 echo "  WebSocket: ws://localhost:10001"
 echo ""
 echo "  Default admin account:"

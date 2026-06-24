@@ -17,7 +17,7 @@ var initDb = require('./utils/init-db');
 initDb.initDatabase();
 
 var app = express();
-var PORT = process.env.PORT || 9000;
+var PORT = process.env.PORT || 9001;
 
 app.use(helmet({
   contentSecurityPolicy: false,
