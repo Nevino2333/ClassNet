@@ -1275,7 +1275,7 @@ function pm2Connect(callback) {
 }
 
 router.get('/pm2/status', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   pm2Connect(function(err, pm2) {
     if (err) return res.status(500).json({ code: 500, message: err.message });
     pm2.list(function(err2, list) {
@@ -1306,7 +1306,7 @@ router.get('/pm2/status', function(req, res) {
 });
 
 router.post('/pm2/restart', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   pm2Connect(function(err, pm2) {
     if (err) return res.status(500).json({ code: 500, message: err.message });
     pm2.restart('classnet-server', function(err2, proc) {
@@ -1319,7 +1319,7 @@ router.post('/pm2/restart', function(req, res) {
 });
 
 router.post('/pm2/stop', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   pm2Connect(function(err, pm2) {
     if (err) return res.status(500).json({ code: 500, message: err.message });
     pm2.stop('classnet-server', function(err2, proc) {
@@ -1332,7 +1332,7 @@ router.post('/pm2/stop', function(req, res) {
 });
 
 router.post('/pm2/start', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   pm2Connect(function(err, pm2) {
     if (err) return res.status(500).json({ code: 500, message: err.message });
     pm2.start('classnet-server', function(err2, proc) {
@@ -1345,7 +1345,7 @@ router.post('/pm2/start', function(req, res) {
 });
 
 router.post('/pm2/flush-logs', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   pm2Connect(function(err, pm2) {
     if (err) return res.status(500).json({ code: 500, message: err.message });
     pm2.flush('classnet-server', function(err2) {
@@ -1358,7 +1358,7 @@ router.post('/pm2/flush-logs', function(req, res) {
 });
 
 router.get('/pm2/logs', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   var lines = parseInt(req.query.lines) || 100;
   var logDir = path.resolve(__dirname, '../../logs');
   var result = { out: [], error: [] };
@@ -1378,7 +1378,7 @@ router.get('/pm2/logs', function(req, res) {
 });
 
 router.get('/pm2/describe', function(req, res) {
-  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: 'Super admin only' });
+  if (!isClassAdminUser(req)) return res.status(403).json({ code: 403, message: '仅班管可操作' });
   pm2Connect(function(err, pm2) {
     if (err) return res.status(500).json({ code: 500, message: err.message });
     pm2.describe('classnet-server', function(err2, desc) {
