@@ -385,7 +385,8 @@ var VALID_OFFICER_PERMISSIONS = [
   'manage_chat',
   'manage_community',
   'manage_users',
-  'manage_announcements'
+  'manage_announcements',
+  'manage_app_control'
 ];
 
 router.get('/officers', function(req, res) {

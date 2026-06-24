@@ -1,4 +1,4 @@
-﻿﻿﻿:root {
+﻿﻿﻿﻿﻿:root {
   /* 主交互色 - iOS System Blue */
   --primary-color: #007AFF;
   --primary-hover: #0066CC;
@@ -45,13 +45,13 @@
   --separator-color: rgba(60, 60, 67, 0.29);
 
   /* 毛玻璃背景 */
-  --dock-bg: rgba(255, 255, 255, 0.78);
-  --nav-bg: rgba(249, 249, 249, 0.80);
+  --dock-bg: rgba(255, 255, 255, 0.65);
+  --nav-bg: rgba(249, 249, 249, 0.70);
   --nav-border: rgba(60, 60, 67, 0.12);
-  --island-bg: rgba(28, 28, 30, 0.90);
+  --island-bg: rgba(28, 28, 30, 0.72);
   --island-text: #FFFFFF;
-  --sidebar-bg: rgba(242, 242, 247, 0.72);
-  --glass-bg: rgba(255, 255, 255, 0.65);
+  --sidebar-bg: rgba(242, 242, 247, 0.60);
+  --glass-bg: rgba(255, 255, 255, 0.55);
   --glass-border: rgba(255, 255, 255, 0.18);
 
   /* 毛玻璃参数 - iOS HIG 标准 */
@@ -164,12 +164,12 @@
   --separator-color: rgba(84, 84, 88, 0.65);
 
   /* 毛玻璃背景 */
-  --dock-bg: rgba(28, 28, 30, 0.78);
-  --nav-bg: rgba(20, 20, 22, 0.80);
+  --dock-bg: rgba(28, 28, 30, 0.65);
+  --nav-bg: rgba(20, 20, 22, 0.70);
   --nav-border: rgba(84, 84, 88, 0.65);
-  --island-bg: rgba(18, 18, 20, 0.92);
-  --sidebar-bg: rgba(18, 18, 20, 0.72);
-  --glass-bg: rgba(28, 28, 30, 0.65);
+  --island-bg: rgba(18, 18, 20, 0.75);
+  --sidebar-bg: rgba(18, 18, 20, 0.60);
+  --glass-bg: rgba(28, 28, 30, 0.55);
   --glass-border: rgba(255, 255, 255, 0.08);
 
   /* 阴影 - 深色模式减弱 */

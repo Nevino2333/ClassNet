@@ -2188,7 +2188,8 @@ export default {
         manage_chat: '聊天管理',
         manage_community: '社区管理',
         manage_users: '用户封禁',
-        manage_announcements: '公告管理'
+        manage_announcements: '公告管理',
+        manage_app_control: '应用管控'
       };
       try {
         var perms = JSON.parse(permsStr || '[]');
