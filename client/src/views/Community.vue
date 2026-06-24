@@ -1711,6 +1711,9 @@ export default {
         if (this.newPost.title && this.newPost.title.trim()) {
           data.title = this.newPost.title.trim();
         }
+        if (this.newPostExtra) {
+          data.extra = this.newPostExtra;
+        }
       } else if (this.newPost.type === 'poll') {
         data.title = this.newPost.pollForm.title;
         data.content = this.newPost.pollForm.title;
@@ -1736,6 +1739,7 @@ export default {
       var self = this;
       this.$store.dispatch('community/createPost', data).then(function() {
         self.showPostModal = false;
+        self.newPostExtra = null;
         self.$store.commit('toast/SHOW_TOAST', { message: '发布成功', type: 'success' });
         self.initData();
       }).catch(function(err) {
@@ -2019,10 +2023,11 @@ export default {
     },
     showPlaylistSharePost: function(plData) {
       var self = this;
-      self.newPostType = 'forum';
-      self.newPostTitle = '🎵 分享歌单：' + (plData.playlistName || '歌单');
-      self.newPostContent = '分享了一个音乐歌单「' + (plData.playlistName || '歌单') + '」，共 ' + (plData.songCount || 0) + ' 首歌曲。' + (plData.description ? '\n\n' + plData.description : '') + '\n\n分享码：' + (plData.shareCode || '');
-      self.showNewPostModal = true;
+      self.newPost.type = 'forum';
+      self.newPost.title = '🎵 分享歌单：' + (plData.playlistName || '歌单');
+      self.newPost.content = '分享了一个音乐歌单「' + (plData.playlistName || '歌单') + '」，共 ' + (plData.songCount || 0) + ' 首歌曲。' + (plData.description ? '\n\n' + plData.description : '');
+      self.newPostExtra = { playlist_id: plData.playlistId, playlist_name: plData.playlistName, song_count: plData.songCount };
+      self.showPostModal = true;
     },
     submitComment: function() {
       if (!this.commentText.trim() || !this.currentPost) return;
