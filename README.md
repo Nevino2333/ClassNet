@@ -1,24 +1,22 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Vue-2.7-4fc08d?logo=vuedotjs" alt="Vue 2.7">
-  <img src="https://img.shields.io/badge/Express-4.x-000000?logo=express" alt="Express 4">
-  <img src="https://img.shields.io/badge/Vite-5.x-646cff?logo=vite" alt="Vite 5">
-  <img src="https://img.shields.io/badge/pnpm-monorepo-f69220?logo=pnpm" alt="pnpm monorepo">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
-  <img src="https://img.shields.io/badge/Vibe_Coding-AI_%2B_%E4%BA%BA%E5%B7%A5-ff6b6b?logo=openai" alt="Vibe Coding">
+  <img width="12%" align="center" src="https://img.icons8.com/fluency/240/classroom.png" alt="logo">
 </p>
 
 <h1 align="center">📱 ClassNet</h1>
 <p align="center"><strong>校园内网 WebOS 平台</strong> · 类 iOS 设计 · 横屏平板优化</p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/node-18%2B-brightgreen?logo=nodedotjs" alt="Node 18+">
-  <img src="https://img.shields.io/badge/database-SQLite-003b57?logo=sqlite" alt="SQLite">
-  <img src="https://img.shields.io/badge/author-Nevino-orange" alt="Author: Nevino">
-</p>
+<div align="center">
+
+[![星标](https://img.shields.io/github/stars/Nevino2333/ClassNet?style=for-the-badge&color=orange&label=%E6%98%9F%E6%A0%87)](https://github.com/Nevino2333/ClassNet)
+[![开源许可](https://img.shields.io/badge/license-MIT-blue.svg?label=%E5%BC%80%E6%BA%90%E8%AE%B8%E5%8F%AF%E8%AF%81&style=for-the-badge)](LICENSE)
+[![Vibe Coding](https://img.shields.io/badge/Vibe_Coding-AI_%2B_%E4%BA%BA%E5%B7%A5-ff6b6b?style=for-the-badge)](https://github.com/Nevino2333/ClassNet)
+[![平台](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue?style=for-the-badge)](https://github.com/Nevino2333/ClassNet)
+[![Node](https://img.shields.io/badge/node-18%2B-brightgreen?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+
+</div>
 
 <p align="center">
-  <sub>💡 本项目采用 <strong>Vibe Coding</strong> 开发模式 — 人类构思与指导 + AI 辅助编码实现</sub>
+  <sub>💡 本项目采用 <strong>Vibe Coding</strong> 开发模式 — 人类构思与指导 + AI 辅助编码实现<br>作者：<strong>Nevino</strong></sub>
 </p>
 
 ---
@@ -277,13 +275,13 @@ pnpm build         # 生产构建
 
 ---
 
-## 📈 Star History
+## 📈 星标历史
 
-<p align="center">
-  <a href="https://www.star-history.com/?repos=Nevino2333%2FClassNet&type=date&legend=bottom-right">
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Nevino2333/ClassNet&type=date" width="600" />
-  </a>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Nevino2333/ClassNet&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Nevino2333/ClassNet&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Nevino2333/ClassNet&type=Date" />
+</picture>
 
 ---
 
