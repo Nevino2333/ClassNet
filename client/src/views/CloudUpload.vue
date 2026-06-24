@@ -64,12 +64,20 @@ export default {
 
       api.post('/cloud/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
-      }).then(function() {
+      }).then(function(res) {
         self.uploading = false;
-        self.uploaded = true;
-      }).catch(function() {
+        if (res.data.code === 200) {
+          self.uploaded = true;
+        } else {
+          alert(res.data.message || '上传失败，请重试');
+        }
+      }).catch(function(err) {
         self.uploading = false;
-        alert('上传失败，请重试');
+        var msg = '上传失败，请重试';
+        if (err.response && err.response.data && err.response.data.message) {
+          msg = err.response.data.message;
+        }
+        alert(msg);
       }).finally(function() {
         e.target.value = '';
       });

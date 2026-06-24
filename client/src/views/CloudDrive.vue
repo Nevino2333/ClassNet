@@ -100,9 +100,15 @@ export default {
         if (res.data.code === 200) {
           self.$store.commit('toast/SHOW_TOAST', { message: '上传成功', type: 'success' });
           self.loadFiles();
+        } else {
+          self.$store.commit('toast/SHOW_TOAST', { message: res.data.message || '上传失败', type: 'error' });
         }
-      }).catch(function() {
-        self.$store.commit('toast/SHOW_TOAST', { message: '上传失败', type: 'error' });
+      }).catch(function(err) {
+        var msg = '上传失败';
+        if (err.response && err.response.data && err.response.data.message) {
+          msg = err.response.data.message;
+        }
+        self.$store.commit('toast/SHOW_TOAST', { message: msg, type: 'error' });
       }).finally(function() {
         self.uploading = false;
         e.target.value = '';

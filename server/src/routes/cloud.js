@@ -247,4 +247,23 @@ router.delete('/note/:noteId', auth.requireAuth, function(req, res) {
   res.json({ code: 200, message: '删除成功' });
 });
 
+// Multer 错误处理中间件
+router.use(function(err, req, res, next) {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ code: 400, message: '文件大小超过限制（最大20MB）' });
+  }
+  if (err.code === 'LIMIT_FILE_COUNT') {
+    return res.status(400).json({ code: 400, message: '文件数量超过限制（最多10个）' });
+  }
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ code: 400, message: '意外的文件字段' });
+  }
+  if (err.message === '不支持的文件类型') {
+    return res.status(400).json({ code: 400, message: '不支持的文件类型，仅支持 jpg/jpeg/png/gif/webp/bmp' });
+  }
+  // 其他错误
+  console.error('[Cloud] 上传错误:', err);
+  res.status(500).json({ code: 500, message: '上传失败：' + err.message });
+});
+
 module.exports = router;
