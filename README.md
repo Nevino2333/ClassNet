@@ -277,6 +277,16 @@ pnpm build         # 生产构建
 
 ---
 
+## 📈 Star History
+
+<p align="center">
+  <a href="https://starchart.cc/Nevino2333/ClassNet">
+    <img src="https://starchart.cc/Nevino2333/ClassNet" alt="Star History Chart" width="600">
+  </a>
+</p>
+
+---
+
 ## 📄 License
 
 MIT © Nevino
