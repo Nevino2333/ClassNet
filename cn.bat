@@ -149,7 +149,7 @@ goto menu
 :build
 echo [ClassNet] Building frontend...
 cd client
-call npm run build
+call pnpm run build
 if errorlevel 1 (
     echo [ClassNet] Build FAILED!
     cd ..

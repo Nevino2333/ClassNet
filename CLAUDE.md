@@ -32,9 +32,11 @@ ClassNet/
 ├── server/src/           # Node.js 后端源码
 │   ├── routes/           # API 路由
 │   ├── middleware/        # 中间件
+│   ├── ws/               # WebSocket 中继
 │   └── utils/            # 工具（db, jwt, cache...）
+├── server/public/        # 构建产物（前端 dist + setup.html）
+├── server/database/      # SQLite 数据库文件目录
 ├── Resources/            # 🔒 用户自行管理，AI 不得触碰
-├── docs/                 # 文档
 └── .git/                 # Git 仓库（含 hooks 和修复脚本）
 ```
 
@@ -210,7 +212,7 @@ cd client && npx vite build    # 构建
 cd client && npx vite dev      # 开发服务器
 
 # 后端
-cd server && node src/index.js # 启动服务器
+cd server && node src/app.js # 启动服务器
 ```
 
 ---

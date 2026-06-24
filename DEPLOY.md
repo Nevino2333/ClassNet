@@ -88,8 +88,10 @@ PORT=9001
 WS_PORT=10001
 JWT_SECRET=<替换为32位以上随机字符串>
 JWT_EXPIRES_IN=7d
-ADMIN_USER_IDS=0001,0002
-ADMIN_PASSWORD=<设置管理员初始密码>
+ADMIN_USER_IDS=250100,250800
+# 班管不预创建账号 — 学生用预注册名单中的真实姓名注册后自动获得管理员权限
+# DEV_PASSWORD 用于创建开发测试账号 (ID: 999999)，可选
+# DEV_PASSWORD=dev123456
 QWEATHER_KEY=<和风天气API密钥>
 QWEATHER_LOCATION=<经度,纬度，如 116.41,39.92>
 AI_API_KEY=<AI服务API密钥>
@@ -133,7 +135,7 @@ node src/utils/init-db.js
 
 - 数据表结构
 - 预注册记录（如已配置 pre-records.json）
-- 管理员账户（根据 `ADMIN_USER_IDS` 和 `ADMIN_PASSWORD` 配置自动创建）
+- 班管权限（用户注册后，若其 ID 匹配 `ADMIN_USER_IDS`，自动获得管理员权限）
 - 默认广播消息
 
 ### 2.6 开发模式启动
@@ -184,7 +186,12 @@ NODE_ENV=production node src/app.js
 | JWT_SECRET | JWT 签名密钥 | 无（必须设置，否则无法启动） | **是** |
 | JWT_EXPIRES_IN | Token 有效期 | 7d | 否 |
 | ADMIN_USER_IDS | 班管ID（逗号分隔，格式YYCC00） | 无 | 否 |
-| ADMIN_PASSWORD | 管理员初始密码 | changeme | 否 |
+| DEV_PASSWORD | 开发者账号密码（ID: 999999） | 空 | 否 |
+| COHORT | 届数（毕业年份后两位） | 自动推断 | 否 |
+| RELAY_PORT | 中继服务端口 | 10011 | 否 |
+| HTTPS | 启用 secure cookie（生产环境建议 true） | false | 否 |
+| VERBOSE_LOG | 详细活动日志（1=启用） | 0 | 否 |
+| TAILSCALE_STATUS_CMD | Tailscale 状态命令路径 | tailscale status --json | 否 |
 | QWEATHER_KEY | 和风天气 API Key | 空 | 否* |
 | QWEATHER_LOCATION | 天气位置（经度,纬度） | 空 | 否* |
 | QWEATHER_API_HOST | 和风天气 API 地址 | devapi.qweather.com | 否 |
@@ -285,7 +292,7 @@ curl http://localhost:9001
 
 ### 5.3 管理员验证
 
-1. 使用 `ADMIN_USER_IDS` 中的ID注册管理员账户（密码见 `ADMIN_PASSWORD`）
+1. 使用预注册名单中的真实姓名注册（ID 匹配 `ADMIN_USER_IDS` 即自动获得管理员权限）
 2. 登录后访问 `/admin` 路径
 3. 验证用户管理、广播管理功能
 

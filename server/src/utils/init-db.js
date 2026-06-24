@@ -191,17 +191,21 @@ function initDatabase() {
     db.exec("ALTER TABLE group_messages ADD COLUMN extra_json TEXT DEFAULT '{}'");
   }
 
-  var preRecords = [];
-  var preRecords18 = [];
+  var allPreRecords = [];
   try {
     var preRecordsData = require('../../config/pre-records.json');
-    preRecords = preRecordsData.class08 || [];
-    preRecords18 = preRecordsData.class18 || [];
+    // 动态读取所有班级 (classXX)，不再硬编码 class08/class18
+    Object.keys(preRecordsData).forEach(function(key) {
+      if (/^class\d{2}$/.test(key)) {
+        var classRecords = preRecordsData[key];
+        if (Array.isArray(classRecords)) {
+          allPreRecords = allPreRecords.concat(classRecords);
+        }
+      }
+    });
   } catch (e) {
     console.warn('[init-db] pre-records.json not found, skipping pre-records import');
   }
-
-  var allPreRecords = preRecords.concat(preRecords18);
 
   // 清除旧的预注册名单后重新导入，避免多次 setup 导致 ID 冲突
   db.exec('DELETE FROM pre_records');
@@ -256,18 +260,16 @@ function initDatabase() {
   );
   insertBroadcast.run('欢迎使用 ClassNet 系统！', 'normal');
 
-  // 按班级分组预注册成员
-  var classMembers = {}; // { '08': [...], '18': [...] }
+  // 按班级分组预注册成员（动态提取 6 位 YYCCNN 格式中的 CC 班级号）
+  var classMembers = {};
   for (var pi = 0; pi < allPreRecords.length; pi++) {
     var pr = allPreRecords[pi];
-    // 新格式 YYCCNN (6位): CC 为班级号; 兼容旧格式 4位前缀
     var cls = '';
     if (pr.user_id.length === 6 && /^\d{6}$/.test(pr.user_id)) {
       cls = pr.user_id.substring(2, 4);
-    } else if (pr.user_id.indexOf('08') === 0) {
-      cls = '08';
-    } else if (pr.user_id.indexOf('18') === 0) {
-      cls = '18';
+    } else if (pr.user_id.length === 4 && /^\d{4}$/.test(pr.user_id)) {
+      // 兼容旧格式：后两位为班级号
+      cls = pr.user_id.substring(2, 4);
     }
     if (cls && cls !== '00') {
       if (!classMembers[cls]) classMembers[cls] = [];

@@ -19,11 +19,11 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9001 " ^| findstr "LISTENIN
     taskkill /PID %%a /F >nul 2>&1
 )
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":10001 " ^| findstr "LISTENING"') do (
-    echo Port 5001 is in use by PID %%a, stopping...
+    echo Port 10001 is in use by PID %%a, stopping...
     taskkill /PID %%a /F >nul 2>&1
 )
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":10011 " ^| findstr "LISTENING"') do (
-    echo Port 5002 is in use by PID %%a, stopping...
+    echo Port 10011 is in use by PID %%a, stopping...
     taskkill /PID %%a /F >nul 2>&1
 )
 timeout /t 2 /nobreak >nul

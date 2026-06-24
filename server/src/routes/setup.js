@@ -218,8 +218,11 @@ router.post('/save', function(req, res) {
 
     fs.writeFileSync(ENV_PATH, envOutput.join('\n'), 'utf8');
 
-    // 重新初始化数据库
+    // 重新加载 .env 到 process.env（覆盖内存中的旧值）
+    require('dotenv').config({ path: ENV_PATH, override: true });
+    // 清除 config 模块缓存，使其从新的 process.env 重建
     try {
+      delete require.cache[require.resolve('../config')];
       var initDb = require('../utils/init-db');
       initDb.initDatabase();
     } catch (e) {
