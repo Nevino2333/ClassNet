@@ -5,6 +5,9 @@
         <button class="nav-action-btn" @click="showSystemPrompt = !showSystemPrompt" title="系统提示词">
           <i class="fa-solid fa-sliders"></i>
         </button>
+        <button v-if="currentConvId && currentMessages.length > 0" class="nav-action-btn" :class="{ 'nav-action-active': selectMode }" @click="toggleSelectMode" title="多选">
+          <i class="fa-solid fa-check-double"></i>
+        </button>
         <button class="nav-action-btn" @click="createNewChat" title="新对话">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
@@ -157,8 +160,17 @@
               v-for="(msg, idx) in currentMessages"
               :key="msg._key"
               class="aichat-msg"
-              :class="{ 'msg-user': msg.role === 'user', 'msg-ai': msg.role === 'assistant' }"
+              :class="{
+                'msg-user': msg.role === 'user',
+                'msg-ai': msg.role === 'assistant',
+                'msg-selected': selectMode && selectedMessages.indexOf(msg._key) > -1,
+                'msg-selectable': selectMode
+              }"
+              @click="selectMode && toggleMessageSelect(msg)"
             >
+              <div v-if="selectMode" class="msg-checkbox" :class="{ checked: selectedMessages.indexOf(msg._key) > -1 }">
+                <i v-if="selectedMessages.indexOf(msg._key) > -1" class="fa-solid fa-check"></i>
+              </div>
               <div class="msg-avatar"><i :class="msg.role === 'user' ? 'fa-solid fa-user' : 'fa-solid fa-rooot'"></i></div>
               <div class="msg-body">
                 <!-- AI searching indicator -->
@@ -192,7 +204,7 @@
                   <button class="retry-btn" @click="retryMessage(msg)">重试</button>
                 </div>
                 <!-- AI message actions (copy + regenerate + forward) -->
-                <div v-if="msg.role === 'assistant' && msg.content && !isStreaming" class="msg-actions">
+                <div v-if="!selectMode && msg.role === 'assistant' && msg.content && !isStreaming" class="msg-actions">
                   <button class="msg-action-btn" @click="copyRawMarkdown(msg.content)" title="复制原始 Markdown">
                     <i class="fa-regular fa-copy"></i>
                   </button>
@@ -204,7 +216,7 @@
                   </button>
                 </div>
                 <!-- User message actions (edit + forward) -->
-                <div v-if="msg.role === 'user' && !isStreaming" class="msg-actions msg-actions-user">
+                <div v-if="!selectMode && msg.role === 'user' && !isStreaming" class="msg-actions msg-actions-user">
                   <button class="msg-action-btn" @click="editMessage(msg)" title="编辑消息">
                     <i class="fa-solid fa-pen"></i>
                   </button>
@@ -218,7 +230,7 @@
         </div>
 
         <!-- Input Area -->
-        <div class="aichat-input-area">
+        <div v-if="!selectMode" class="aichat-input-area">
           <div class="input-wrapper">
             <div class="input-row">
               <textarea
@@ -241,6 +253,22 @@
               <span class="char-counter" :class="{ 'char-warning': inputText.length > 1800 }">{{ inputText.length }}/2000</span>
             </div>
           </div>
+        </div>
+
+        <!-- Batch Action Bar (多选模式) -->
+        <div v-if="selectMode" class="batch-action-bar">
+          <button @click="selectAllMessages" class="batch-btn">
+            <i class="fa-solid" :class="selectedMessages.length === currentMessages.length ? 'fa-square-check' : 'fa-square'"></i>
+            {{ selectedMessages.length === currentMessages.length ? '取消全选' : '全选' }}
+          </button>
+          <span class="batch-count">已选 {{ selectedMessages.length }} 条</span>
+          <button @click="batchForwardToCommunity" :disabled="selectedMessages.length === 0" class="batch-btn batch-btn-primary">
+            <i class="fa-solid fa-comments"></i> 论坛
+          </button>
+          <button @click="batchForwardToChat" :disabled="selectedMessages.length === 0" class="batch-btn batch-btn-primary">
+            <i class="fa-solid fa-comment"></i> 聊天
+          </button>
+          <button @click="toggleSelectMode" class="batch-btn">取消</button>
         </div>
       </div>
     </div>
@@ -483,6 +511,8 @@ export default {
       showForwardDialog: false,
       forwardingMessage: null,
       viewerContent: null,
+      selectMode: false,
+      selectedMessages: [],
       promptTemplates: [
         { icon: 'fa-solid fa-graduation-cap', title: '学术问题', prompt: '请详细解释量子纠缠的原理，并举一个通俗的类比' },
         { icon: 'fa-solid fa-laptop-code', title: '编程开发', prompt: '用 Python 实现一个 LRU 缓存，要求 O(1) 读写' },
@@ -569,10 +599,29 @@ export default {
     }
   },
   mounted: function() {
+    var self = this;
     this.loadAiSettings();
     this.loadConversations();
     this.handleResize();
     window.addEventListener('resize', this.handleResize);
+    // 处理 view query 参数（来自聊天的单条 AI 转发查看）
+    var viewContent = self.$route.query.view;
+    if (viewContent) {
+      self.viewerContent = decodeURIComponent(viewContent);
+      self.$router.replace({ query: {} }).catch(function() {});
+    }
+    // 处理 viewBatch query 参数（来自聊天的批量 AI 转发查看）
+    var viewBatch = self.$route.query.viewBatch;
+    if (viewBatch) {
+      try {
+        var msgs = JSON.parse(decodeURIComponent(viewBatch));
+        self.viewerContent = msgs.map(function(m) {
+          var label = m.role === 'user' ? '🙋 用户' : '🤖 AI';
+          return '### ' + label + '\n\n' + m.content;
+        }).join('\n\n---\n\n');
+      } catch (e) {}
+      self.$router.replace({ query: {} }).catch(function() {});
+    }
   },
   beforeDestroy: function() {
     window.removeEventListener('resize', this.handleResize);
@@ -1443,6 +1492,82 @@ export default {
     },
     resetConvPersona: function() {
       this.convPersona = '';
+    },
+    toggleSelectMode: function() {
+      this.selectMode = !this.selectMode;
+      if (!this.selectMode) {
+        this.selectedMessages = [];
+      }
+    },
+    toggleMessageSelect: function(msg) {
+      var key = msg._key;
+      var idx = this.selectedMessages.indexOf(key);
+      if (idx > -1) {
+        this.selectedMessages.splice(idx, 1);
+      } else {
+        this.selectedMessages.push(key);
+      }
+    },
+    selectAllMessages: function() {
+      var self = this;
+      if (this.selectedMessages.length === this.currentMessages.length) {
+        this.selectedMessages = [];
+      } else {
+        this.selectedMessages = this.currentMessages.map(function(msg) { return msg._key; });
+      }
+    },
+    getSelectedMessagesData: function() {
+      var self = this;
+      return this.selectedMessages.map(function(key) {
+        var msg = self.currentMessages.find(function(m) { return m._key === key; });
+        if (!msg) return null;
+        return { role: msg.role, content: msg.content || '' };
+      }).filter(function(m) { return m !== null; });
+    },
+    batchForwardToCommunity: function() {
+      var self = this;
+      var messages = this.getSelectedMessagesData();
+      if (messages.length === 0) return;
+
+      // 合并所有消息为一个帖子
+      var title = '🤖 AI对话记录（' + messages.length + '条）';
+      var content = '> 以下内容来自AI对话\n\n';
+      for (var i = 0; i < messages.length; i++) {
+        var msg = messages[i];
+        var roleLabel = msg.role === 'user' ? '**🙋 用户：**' : '**🤖 AI：**';
+        content += roleLabel + '\n\n' + msg.content + '\n\n---\n\n';
+      }
+
+      api.post('/community/posts', {
+        type: 'forum',
+        title: title,
+        content: content,
+        is_anonymous: false
+      }).then(function(res) {
+        if (res.data.code === 200) {
+          self.$store.commit('toast/SHOW_TOAST', { message: '已转发到论坛', type: 'success' });
+          self.selectMode = false;
+          self.selectedMessages = [];
+          setTimeout(function() {
+            self.$router.push('/community?post=' + res.data.data.id);
+          }, 1000);
+        }
+      }).catch(function() {
+        self.$store.commit('toast/SHOW_TOAST', { message: '转发失败', type: 'error' });
+      });
+    },
+    batchForwardToChat: function() {
+      var self = this;
+      var messages = this.getSelectedMessagesData();
+      if (messages.length === 0) return;
+
+      var forwardData = {
+        messages: messages,
+        timestamp: new Date().toISOString()
+      };
+      this.$router.push('/chat?forward=' + encodeURIComponent(JSON.stringify(forwardData)) + '&forwardType=ai_batch');
+      this.selectMode = false;
+      this.selectedMessages = [];
     }
   }
 };
@@ -3431,5 +3556,125 @@ export default {
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-color, #000);
+}
+
+/* 多选模式 - 导航栏按钮激活态 */
+.nav-action-active {
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary-color);
+}
+
+/* 多选模式 - 消息选中样式 */
+.msg-selectable {
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background 0.15s var(--ease-standard);
+}
+
+.msg-selectable:hover {
+  background: rgba(var(--primary-rgb), 0.04);
+}
+
+.msg-selected {
+  background: rgba(0, 122, 255, 0.08);
+}
+
+/* 多选模式 - 圆形 checkbox */
+.msg-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--separator-color, #e5e5ea);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+  align-self: center;
+  transition: all 0.2s var(--ease-standard);
+}
+
+.msg-checkbox.checked {
+  background: var(--accent-color, #007aff);
+  border-color: var(--accent-color, #007aff);
+  color: #fff;
+}
+
+.msg-checkbox i {
+  font-size: 12px;
+}
+
+/* 多选模式 - 底部批量操作栏 */
+.batch-action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--nav-bg, var(--card-bg, #fff));
+  backdrop-filter: var(--glass-blur-nav, blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur-nav, blur(20px));
+  border-top: 0.5px solid var(--separator-color, #e5e5ea);
+  z-index: 100;
+}
+
+.batch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: none;
+  border: 0.5px solid var(--separator-color, #e5e5ea);
+  border-radius: var(--radius-md, 10px);
+  font-size: var(--font-size-caption1, 13px);
+  color: var(--text-color, #000);
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.batch-btn:active {
+  opacity: 0.7;
+  transform: scale(0.96);
+}
+
+.batch-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.batch-btn-primary {
+  background: var(--accent-color, #007aff);
+  color: #fff;
+  border-color: var(--accent-color, #007aff);
+}
+
+.batch-btn-primary:disabled {
+  background: var(--separator-color, #e5e5ea);
+  border-color: var(--separator-color, #e5e5ea);
+  color: var(--text-color-secondary, #999);
+}
+
+.batch-count {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-size-caption1, 13px);
+  color: var(--text-color-secondary, #999);
+}
+
+@media (max-width: 768px) {
+  .batch-action-bar {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .batch-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .batch-count {
+    font-size: 12px;
+  }
 }
 </style>

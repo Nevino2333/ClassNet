@@ -974,6 +974,7 @@ export default {
     forwardModalTypeLabel: function() {
       if (!this.pendingForward) return '帖子';
       if (this.pendingForwardType === 'music_playlist' || this.pendingForward.playlistId) return '音乐歌单';
+      if (this.pendingForwardType === 'ai_batch') return 'AI对话记录';
       var t = this.pendingForward.postType;
       if (t === 'food') return '美食推荐';
       if (t === 'hot') return '热事爆料';
@@ -2478,7 +2479,8 @@ export default {
       var isCommunityForward = !!forwardData.postId;
       var isMusicPlaylist = self.pendingForwardType === 'music_playlist' || !!forwardData.playlistId;
       var isAiForward = self.pendingForwardType === 'ai_forward';
-      var msgType = isMusicPlaylist ? 'music_playlist' : (isCommunityForward ? 'community_forward' : (isAiForward ? 'ai_forward' : 'text'));
+      var isAiBatch = self.pendingForwardType === 'ai_batch';
+      var msgType = isMusicPlaylist ? 'music_playlist' : (isCommunityForward ? 'community_forward' : (isAiForward ? 'ai_forward' : (isAiBatch ? 'ai_batch' : 'text')));
       var content;
       if (isCommunityForward) {
         content = JSON.stringify(forwardData);
@@ -2488,6 +2490,11 @@ export default {
         content = JSON.stringify({
           content: forwardData.content,
           role: forwardData.role || 'assistant'
+        });
+      } else if (isAiBatch) {
+        content = JSON.stringify({
+          messages: forwardData.messages,
+          timestamp: forwardData.timestamp
         });
       } else {
         content = forwardData.content;
@@ -2546,6 +2553,8 @@ export default {
 
       // AI 转发：用户已在聊天页，消息会立即出现，无需弹出成功对话框
       if (isAiForward) return;
+      // AI 批量转发：同上，无需弹出成功对话框
+      if (isAiBatch) return;
 
       var targetName = '公共聊天室';
       if (self.isGroupChat(chatId)) {

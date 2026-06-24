@@ -55,6 +55,14 @@
         </div>
         <div class="forward-action">点击查看全文 <i class="fa-solid fa-chevron-right"></i></div>
       </div>
+      <div v-else-if="message.type === 'ai_batch'" class="bubble-content bubble-forward bubble-ai" @click="onAiBatchClick">
+        <div class="forward-label"><i class="fa-solid fa-robot"></i> AI对话记录（{{ aiBatchCount }}条）</div>
+        <div class="forward-card forward-card-ai">
+          <div class="forward-title">🤖 对话记录</div>
+          <div class="forward-preview">{{ aiBatchPreview }}</div>
+        </div>
+        <div class="forward-action">点击查看全文 <i class="fa-solid fa-chevron-right"></i></div>
+      </div>
       <div v-else class="bubble-content">
         <div v-if="message.reply_to" class="reply-quote" @click="onReplyQuoteClick">
           <div class="reply-quote-name">{{ message.reply_to.user_name }}</div>
@@ -202,6 +210,24 @@ export default {
       var plain = text.replace(/[#*`>\-\[\]()!]/g, '').replace(/\n+/g, ' ').trim();
       return plain.length > 50 ? plain.substring(0, 50) + '...' : plain;
     },
+    aiBatchData: function() {
+      if (this.message.type !== 'ai_batch') return {};
+      try {
+        return JSON.parse(this.message.content);
+      } catch (e) {
+        return {};
+      }
+    },
+    aiBatchCount: function() {
+      return (this.aiBatchData.messages || []).length;
+    },
+    aiBatchPreview: function() {
+      var msgs = this.aiBatchData.messages || [];
+      if (msgs.length === 0) return '';
+      var first = msgs[0];
+      var text = (first.content || '').replace(/[#*`>\-\[\]()!]/g, '').replace(/\n+/g, ' ').trim();
+      return text.length > 50 ? text.substring(0, 50) + '...' : text;
+    },
     forwardTypeLabel: function() {
       var t = this.forwardData.postType;
       if (t === 'food') return '美食推荐';
@@ -289,6 +315,12 @@ export default {
       if (data.content) {
         // 跳转到AI聊天页面查看完整内容
         this.$router.push('/ai-chat?view=' + encodeURIComponent(data.content));
+      }
+    },
+    onAiBatchClick: function() {
+      var data = this.aiBatchData;
+      if (data.messages && data.messages.length) {
+        this.$router.push('/ai-chat?viewBatch=' + encodeURIComponent(JSON.stringify(data.messages)));
       }
     },
     formatTime: function(timestamp) {
