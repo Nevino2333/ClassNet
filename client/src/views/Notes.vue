@@ -1028,6 +1028,7 @@ import 'highlight.js/styles/github-dark.min.css';
 import 'katex/dist/katex.min.css';
 import AppNavBar from '@/components/AppNavBar.vue';
 import api from '@/utils/api';
+import LatexRenderer from '@/utils/latex-renderer';
 
 var NOTES_STORAGE_KEY = 'notes_data';
 
@@ -1045,63 +1046,6 @@ mermaid.initialize({
 
 var mermaidRenderCounter = 0;
 var mermaidRenderDebounce = null;
-
-var LATEX_PLACEHOLDER_PREFIX = '%%LATEXPLACEHOLDER';
-var latexCounter = 0;
-
-function extractLatex(content) {
-  latexCounter = 0;
-  var placeholders = {};
-  var result = content;
-  result = result.replace(/\\\[([\s\S]*?)\\\]/g, function(match, formula) {
-    var key = LATEX_PLACEHOLDER_PREFIX + latexCounter + '%%';
-    latexCounter++;
-    placeholders[key] = { formula: formula.trim(), displayMode: true };
-    return key;
-  });
-  result = result.replace(/\\\(([\s\S]*?)\\\)/g, function(match, formula) {
-    var key = LATEX_PLACEHOLDER_PREFIX + latexCounter + '%%';
-    latexCounter++;
-    placeholders[key] = { formula: formula.trim(), displayMode: false };
-    return key;
-  });
-  result = result.replace(/\$\$([\s\S]*?)\$\$/g, function(match, formula) {
-    var key = LATEX_PLACEHOLDER_PREFIX + latexCounter + '%%';
-    latexCounter++;
-    placeholders[key] = { formula: formula.trim(), displayMode: true };
-    return key;
-  });
-  result = result.replace(/\$([^\$\n]+?)\$/g, function(match, formula) {
-    var key = LATEX_PLACEHOLDER_PREFIX + latexCounter + '%%';
-    latexCounter++;
-    placeholders[key] = { formula: formula.trim(), displayMode: false };
-    return key;
-  });
-  return { text: result, placeholders: placeholders };
-}
-
-function renderLatexPlaceholders(html, placeholders) {
-  var keys = Object.keys(placeholders);
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    var info = placeholders[key];
-    try {
-      var rendered = katex.renderToString(info.formula, {
-        displayMode: info.displayMode,
-        throwOnError: false,
-        strict: false,
-        trust: true
-      });
-      var wrapper = info.displayMode
-        ? '<div class="katex-display-wrapper">' + rendered + '</div>'
-        : rendered;
-      html = html.replace(key, wrapper);
-    } catch (e) {
-      html = html.replace(key, '<code class="latex-error">' + info.formula + '</code>');
-    }
-  }
-  return html;
-}
 
 // UTF-8 safe Base64 encode (replaces fragile btoa(unescape(encodeURIComponent(...))))
 function utf8ToBase64(str) {
@@ -1548,13 +1492,12 @@ export default {
   methods: {
     renderMarkdown: function(content) {
       if (!content) return '';
-      var extracted = extractLatex(content);
-      var html = marked(extracted.text);
-      html = renderLatexPlaceholders(html, extracted.placeholders);
-      html = DOMPurify.sanitize(html, {
+      var result = LatexRenderer.processContent(content, marked);
+      result.html = DOMPurify.sanitize(result.html, {
         ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'munder', 'mover', 'munderover', 'mtext', 'mspace', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'msubsup', 'mmultiscripts', 'maction'],
         ADD_ATTR: ['displaystyle', 'scriptlevel', 'mathvariant', 'mathsize', 'mathcolor', 'mathbackground', 'linethickness', 'notation', 'open', 'close', 'separators', 'stretchy', 'symmetric', 'lspace', 'rspace', 'largeop', 'movablelimits', 'accent', 'accentunder', 'align', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing', 'columnlines', 'rowlines', 'frame', 'framespacing', 'equalcolumns', 'equalrows', 'minlabelspacing', 'side', 'subscriptshift', 'superscriptshift']
       });
+      var html = LatexRenderer.renderFinalHtml(result.html, result.placeholders);
       return html;
     },
     computeRenderedContent: function() {
@@ -1573,13 +1516,12 @@ export default {
         sequence: { useMaxWidth: true }
       });
       var content = this.activeFile.content;
-      var extracted = extractLatex(content);
-      var html = marked(extracted.text);
-      html = renderLatexPlaceholders(html, extracted.placeholders);
-      html = DOMPurify.sanitize(html, {
+      var result = LatexRenderer.processContent(content, marked);
+      var html = DOMPurify.sanitize(result.html, {
         ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'munder', 'mover', 'munderover', 'mtext', 'mspace', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'msubsup', 'mmultiscripts', 'maction', 'svg', 'path', 'g', 'text', 'rect', 'circle', 'line', 'polygon', 'polyline', 'ellipse', 'defs', 'clipPath', 'marker', 'tspan', 'foreignObject', 'use', 'image', 'filter', 'feGaussianBlur', 'feOffset', 'feMerge', 'feMergeNode', 'linearGradient', 'stop', 'pattern', 'desc', 'title', 'style'],
         ADD_ATTR: ['xmlns', 'viewBox', 'preserveAspectRatio', 'd', 'x', 'y', 'width', 'height', 'cx', 'cy', 'r', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'points', 'transform', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-size', 'font-family', 'font-weight', 'text-anchor', 'dominant-baseline', 'class', 'id', 'href', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform', 'patternUnits', 'patternTransform', 'filterUnits', 'stdDeviation', 'dx', 'dy', 'result', 'in', 'in2', 'operator', 'k1', 'k2', 'k3', 'k4', 'displaystyle', 'scriptlevel', 'mathvariant', 'mathsize', 'mathcolor', 'mathbackground', 'linethickness', 'notation', 'open', 'close', 'separators', 'stretchy', 'symmetric', 'lspace', 'rspace', 'largeop', 'movablelimits', 'accent', 'accentunder', 'align', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing', 'columnlines', 'rowlines', 'frame', 'framespacing', 'equalcolumns', 'equalrows', 'minlabelspacing', 'side', 'subscriptshift', 'superscriptshift', 'data-raw-b64', 'data-chart-id']
       });
+      html = LatexRenderer.renderFinalHtml(html, result.placeholders);
       html = this.renderAnnotations(html);
       html = this.renderTodoItems(html);
       return html;
@@ -1731,13 +1673,12 @@ export default {
     previewVersion: function(ver) {
       var self = this;
       var content = ver.content || '';
-      var extracted = extractLatex(content);
-      var html = marked(extracted.text);
-      html = renderLatexPlaceholders(html, extracted.placeholders);
-      html = DOMPurify.sanitize(html, {
+      var result = LatexRenderer.processContent(content, marked);
+      var html = DOMPurify.sanitize(result.html, {
         ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'munder', 'mover', 'munderover', 'mtext', 'mspace', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'msubsup', 'mmultiscripts', 'maction', 'svg', 'path', 'g', 'text', 'rect', 'circle', 'line', 'polygon', 'polyline', 'ellipse', 'defs', 'clipPath', 'marker', 'tspan', 'foreignObject', 'use', 'image', 'filter', 'feGaussianBlur', 'feOffset', 'feMerge', 'feMergeNode', 'linearGradient', 'stop', 'pattern', 'desc', 'title', 'style'],
         ADD_ATTR: ['xmlns', 'viewBox', 'preserveAspectRatio', 'd', 'x', 'y', 'width', 'height', 'cx', 'cy', 'r', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'points', 'transform', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-size', 'font-family', 'font-weight', 'text-anchor', 'dominant-baseline', 'class', 'id', 'href', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform', 'patternUnits', 'patternTransform', 'filterUnits', 'stdDeviation', 'dx', 'dy', 'result', 'in', 'in2', 'operator', 'k1', 'k2', 'k3', 'k4', 'displaystyle', 'scriptlevel', 'mathvariant', 'mathsize', 'mathcolor', 'mathbackground', 'linethickness', 'notation', 'open', 'close', 'separators', 'stretchy', 'symmetric', 'lspace', 'rspace', 'largeop', 'movablelimits', 'accent', 'accentunder', 'align', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing', 'columnlines', 'rowlines', 'frame', 'framespacing', 'equalcolumns', 'equalrows', 'minlabelspacing', 'side', 'subscriptshift', 'superscriptshift']
       });
+      html = LatexRenderer.renderFinalHtml(html, result.placeholders);
       html = self.renderAnnotations(html);
       html = self.renderTodoItems(html);
       self.versionPreviewHtml = html;
@@ -5932,6 +5873,86 @@ export default {
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* LaTeX 文档样式 */
+.markdown-body >>> .latex-document {
+  line-height: 1.6;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  margin: 8px 0;
+}
+.markdown-body >>> .latex-tt {
+  font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+  background: rgba(127, 127, 127, 0.1);
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+}
+.markdown-body >>> .latex-pagebreak {
+  border: none;
+  border-top: 1px dashed var(--border-color);
+  margin: 16px 0;
+}
+.markdown-body >>> .latex-block-wrapper {
+  margin: 8px 0;
+}
+.markdown-body >>> .latex-colorbox {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  line-height: 1.5;
+}
+.markdown-body >>> .latex-fbox {
+  display: inline-block;
+  border: 1px solid currentColor;
+  padding: 4px 8px;
+}
+.markdown-body >>> .latex-parbox {
+  display: block;
+}
+.markdown-body >>> .latex-list {
+  padding-left: 2em;
+  margin: 4px 0;
+}
+.markdown-body >>> .latex-list li {
+  margin: 2px 0;
+}
+.markdown-body >>> .latex-quote {
+  margin: 8px 0;
+  padding: 8px 16px;
+  border-left: 3px solid var(--border-color);
+  font-style: italic;
+  opacity: 0.9;
+}
+.markdown-body >>> .latex-verbatim {
+  background: rgba(127, 127, 127, 0.08);
+  padding: 8px 12px;
+  border-radius: var(--radius-xs);
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+}
+.markdown-body >>> .latex-abstract {
+  margin: 8px 0;
+  padding: 8px 12px;
+  font-size: 0.95em;
+  opacity: 0.85;
+}
+.markdown-body >>> .latex-verse {
+  margin: 8px 0;
+  padding-left: 2em;
+  white-space: pre-line;
+}
+/* LaTeX 字体大小 */
+.markdown-body >>> .latex-tiny        { font-size: 0.5em; }
+.markdown-body >>> .latex-footnotesize { font-size: 0.7em; }
+.markdown-body >>> .latex-small       { font-size: 0.85em; }
+.markdown-body >>> .latex-normalsize  { font-size: 1em; }
+.markdown-body >>> .latex-large       { font-size: 1.2em; }
+.markdown-body >>> .latex-Large       { font-size: 1.44em; }
+.markdown-body >>> .latex-LARGE       { font-size: 1.73em; }
+.markdown-body >>> .latex-huge        { font-size: 2.07em; }
+.markdown-body >>> .latex-Huge        { font-size: 2.5em; }
 
 .markdown-body >>> .latex-error {
   color: var(--danger-color);

@@ -2528,6 +2528,16 @@ export default {
   line-height: 1.5;
 }
 
+.markdown-body >>> .latex-fbox {
+  display: inline-block;
+  border: 1px solid currentColor;
+  padding: 4px 8px;
+}
+
+.markdown-body >>> .latex-parbox {
+  display: block;
+}
+
 .markdown-body >>> .latex-list {
   padding-left: 2em;
   margin: 4px 0;

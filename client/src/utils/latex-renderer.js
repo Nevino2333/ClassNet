@@ -110,10 +110,12 @@ function readCommandName(text, startIndex) {
 // ========== 检测 ==========
 
 var LATEX_BODY_COMMANDS = [
-  'colorbox', 'fcolorbox', 'textcolor', 'color',
+  'colorbox', 'fcolorbox', 'textcolor', 'color', 'pagecolor',
+  'framebox', 'parbox',
   'textbf', 'textit', 'emph', 'underline', 'textsl',
   'texttt', 'textsf', 'textsc', 'textrm', 'textnormal', 'textup', 'textmd',
   'textsuperscript', 'textsubscript',
+  'sffamily', 'rmfamily', 'ttfamily', 'bfseries', 'itshape', 'slshape', 'scshape',
   'Huge', 'huge', 'LARGE', 'Large', 'large',
   'small', 'footnotesize', 'tiny', 'normalsize',
   'centering', 'raggedright', 'raggedleft',
@@ -275,6 +277,10 @@ function convertLatexBodyToHtml(text, preambleStyles, preambleFontSize) {
   var hadLineBreak = false;
   // 列表状态栈：每进入一层列表 push { type: 'ul'|'ol' }，退出时 pop
   var listStack = [];
+  // 声明式命令 span 栈（\color, \sffamily, \bfseries 等），分组结束时回滚
+  var openDeclSpans = [];
+  // 分组边界：每个 { 分组记录进入时的 openDeclSpans.length，} 时回滚
+  var groupBoundaries = [];
 
   while (i < text.length) {
     // 跳过注释
@@ -287,7 +293,21 @@ function convertLatexBodyToHtml(text, preambleStyles, preambleFontSize) {
 
     // 非反斜杠 → 直接处理字符
     if (text[i] !== '\\') {
-      if (text[i] === '\n') {
+      if (text[i] === '{') {
+        // LaTeX 分组开始 — 记录当前声明深度，退出分组时回滚
+        groupBoundaries.push(openDeclSpans.length);
+      } else if (text[i] === '}') {
+        // LaTeX 分组结束 — 回滚到分组前的声明状态
+        if (groupBoundaries.length > 0) {
+          var boundary = groupBoundaries.pop();
+          while (openDeclSpans.length > boundary) {
+            var decl = openDeclSpans.pop();
+            html += (decl.closeTag || '</span>');
+          }
+        } else {
+          html += '}';
+        }
+      } else if (text[i] === '\n') {
         html += hadLineBreak ? '<br>' : '\n';
         hadLineBreak = false;
       } else if (text[i] === '~') {
@@ -372,6 +392,29 @@ function convertLatexBodyToHtml(text, preambleStyles, preambleFontSize) {
       }
       i = afterCmdIndex;
       hadLineBreak = false;
+      continue;
+    }
+
+    // -- 字体族声明（\sffamily, \rmfamily, \ttfamily）--
+    var FONT_FAMILY_DECL = { sffamily: 'sans-serif', rmfamily: 'serif', ttfamily: 'monospace' };
+    if (FONT_FAMILY_DECL.hasOwnProperty(cmdName)) {
+      html += '<span style="font-family:' + FONT_FAMILY_DECL[cmdName] + '">';
+      openDeclSpans.push({ closeTag: '</span>' });
+      i = afterCmdIndex;
+      continue;
+    }
+
+    // -- 字体样式声明（\bfseries, \itshape, \slshape, \scshape）--
+    var FONT_STYLE_DECL = {
+      bfseries: 'font-weight:bold',
+      itshape: 'font-style:italic',
+      slshape: 'font-style:oblique',
+      scshape: 'font-variant:small-caps'
+    };
+    if (FONT_STYLE_DECL.hasOwnProperty(cmdName)) {
+      html += '<span style="' + FONT_STYLE_DECL[cmdName] + '">';
+      openDeclSpans.push({ closeTag: '</span>' });
+      i = afterCmdIndex;
       continue;
     }
 
@@ -500,6 +543,28 @@ function convertLatexBodyToHtml(text, preambleStyles, preambleFontSize) {
       continue;
     }
 
+    // -- \color{name}（声明式，作用域到分组结束）--
+    if (cmdName === 'color' && afterCmdIndex < text.length && text[afterCmdIndex] === '{') {
+      var clrEnd = findMatchingBrace(text, afterCmdIndex);
+      if (clrEnd !== -1) {
+        var clrName = text.substring(afterCmdIndex + 1, clrEnd);
+        html += '<span style="color:' + clrName + '">';
+        openDeclSpans.push({ closeTag: '</span>' });
+        i = clrEnd + 1;
+        continue;
+      }
+    }
+
+    // -- \pagecolor{name}（设置背景色）--
+    if (cmdName === 'pagecolor' && afterCmdIndex < text.length && text[afterCmdIndex] === '{') {
+      var pcEnd = findMatchingBrace(text, afterCmdIndex);
+      if (pcEnd !== -1) {
+        preambleStyles.backgroundColor = text.substring(afterCmdIndex + 1, pcEnd);
+        i = pcEnd + 1;
+        continue;
+      }
+    }
+
     // -- \textcolor{color}{text} --
     if (cmdName === 'textcolor' && afterCmdIndex < text.length && text[afterCmdIndex] === '{') {
       var tcColorEnd = findMatchingBrace(text, afterCmdIndex);
@@ -549,6 +614,32 @@ function convertLatexBodyToHtml(text, preambleStyles, preambleFontSize) {
       }
     }
 
+    // -- \framebox{content}（带边框盒子）--
+    if (cmdName === 'framebox' && afterCmdIndex < text.length && text[afterCmdIndex] === '{') {
+      var fbEnd = findMatchingBrace(text, afterCmdIndex);
+      if (fbEnd !== -1) {
+        var fbInner = convertLatexBodyToHtml(text.substring(afterCmdIndex + 1, fbEnd), {}, null);
+        html += '<span class="latex-fbox">' + fbInner + '</span>';
+        i = fbEnd + 1;
+        continue;
+      }
+    }
+
+    // -- \parbox{width}{content}（固定宽度段落盒）--
+    if (cmdName === 'parbox' && afterCmdIndex < text.length && text[afterCmdIndex] === '{') {
+      var pwEnd = findMatchingBrace(text, afterCmdIndex);
+      if (pwEnd !== -1 && pwEnd + 1 < text.length && text[pwEnd + 1] === '{') {
+        var parWidth = text.substring(afterCmdIndex + 1, pwEnd);
+        var pcEnd = findMatchingBrace(text, pwEnd + 1);
+        if (pcEnd !== -1) {
+          var parInner = convertLatexBodyToHtml(text.substring(pwEnd + 2, pcEnd), {}, null);
+          html += '<div class="latex-parbox" style="width:' + parWidth + '">' + parInner + '</div>';
+          i = pcEnd + 1;
+          continue;
+        }
+      }
+    }
+
     // -- 未知命令 → 字面输出 --
     html += escapeHtml('\\' + cmdName);
     i = afterCmdIndex;
@@ -556,6 +647,10 @@ function convertLatexBodyToHtml(text, preambleStyles, preambleFontSize) {
   }
 
   // 关闭未闭合的结构
+  while (openDeclSpans.length > 0) {
+    var declSpan = openDeclSpans.pop();
+    html += (declSpan.closeTag || '</span>');
+  }
   while (openSizeSpans.length > 0) { html += '</span>'; openSizeSpans.pop(); }
   while (listStack.length > 0) {
     var lst = listStack.pop();
