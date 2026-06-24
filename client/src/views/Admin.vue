@@ -1663,7 +1663,8 @@ export default {
       this.activeTab = tabKey;
     },
     loadTabData: function(tabKey) {
-      if (this.loadedTabs[tabKey]) return;
+      // 权限管理标签页每次切换都重新加载，确保权限数据最新
+      if (tabKey !== 'permissions' && this.loadedTabs[tabKey]) return;
       this.loadedTabs[tabKey] = true;
 
       switch (tabKey) {

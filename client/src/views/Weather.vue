@@ -543,15 +543,15 @@ export default {
 }
 
 .card {
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: var(--glass-blur-overlay);
-  -webkit-backdrop-filter: var(--glass-blur-overlay);
-  border: 0.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.15);
   border-radius: var(--radius-lg);
   padding: 12px 14px;
   min-width: 0;
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .card-label {
@@ -626,15 +626,15 @@ export default {
 }
 
 .air-card, .life-card {
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: var(--glass-blur-overlay);
-  -webkit-backdrop-filter: var(--glass-blur-overlay);
-  border: 0.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.15);
   border-radius: var(--radius-lg);
   padding: 12px 14px;
   min-width: 0;
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .warning-card-wrap {

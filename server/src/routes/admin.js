@@ -130,6 +130,12 @@ router.get('/users', auth.requirePermission('manage_users'), function(req, res) 
       users[i].ai_model = 'default';
     }
     delete users[i].ai_settings_json;
+    // 统一解析 officer_permissions 为数组
+    try {
+      users[i].officer_permissions = JSON.parse(users[i].officer_permissions || '[]');
+    } catch (e) {
+      users[i].officer_permissions = [];
+    }
   }
 
   res.json({
