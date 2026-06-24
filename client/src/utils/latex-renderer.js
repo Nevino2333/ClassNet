@@ -124,24 +124,30 @@ var LATEX_BODY_COMMANDS = [
   'today', 'LaTeX', 'TeX', 'ldots', 'dots', 'quad', 'qquad'
 ];
 
+// 预编译：将所有 LaTeX 命令合并为一个正则，避免运行时 42 次动态 RegExp 构造
+var LATEX_BODY_COMMANDS_RE = new RegExp(
+  '\\\\(' + LATEX_BODY_COMMANDS.join('|') + ')(?=[\\s{\\[\\\\)\\\\])',
+  'g'
+);
+
 function isLatexBodyFragment(content) {
+  // 快速排除：Markdown 结构
   if (/^#{1,6}\s/m.test(content)) return false;
   if (/```[\s\S]*?```/.test(content)) return false;
   if (/^\s*[-*+]\s/m.test(content)) return false;
   if (/^\s*\d+\.\s/m.test(content)) return false;
   if (/\[.*\]\(.*\)/.test(content)) return false;
 
-  var cmdCount = 0;
-  for (var j = 0; j < LATEX_BODY_COMMANDS.length; j++) {
-    var pattern = new RegExp('\\\\' + LATEX_BODY_COMMANDS[j] + '[\\s{\\[\\)\\\\]', 'g');
-    var matches = content.match(pattern);
-    if (matches) cmdCount += matches.length;
-  }
-  return cmdCount >= 2;
+  // 单次正则扫描替代 42 次动态 RegExp 构造
+  var matches = content.match(LATEX_BODY_COMMANDS_RE);
+  return matches ? matches.length >= 2 : false;
 }
 
 function detectLatexDocument(content) {
   if (!content) return { detected: false, innerContent: null };
+
+  // 快速排除：没有反斜杠的内容不可能是 LaTeX
+  if (content.indexOf('\\') === -1) return { detected: false, innerContent: null };
 
   var explicitMatch = content.match(/\\begin\{latex\}([\s\S]*?)\\end\{latex\}/);
   if (explicitMatch) {
@@ -847,8 +853,48 @@ function renderLatexBlocks(html, blocks) {
   return html;
 }
 
+// ========== 渲染结果缓存（LRU，避免相同内容重复处理）==========
+
+var _cacheMax = 60;
+var _cacheMap = Object.create(null);  // contentHash → { html, placeholders }
+var _cacheKeys = [];                  // 访问顺序队列
+
+function _cacheGet(key) {
+  var entry = _cacheMap[key];
+  if (!entry) return null;
+  // 移到队尾（最近使用）
+  var idx = _cacheKeys.indexOf(key);
+  if (idx > -1) _cacheKeys.splice(idx, 1);
+  _cacheKeys.push(key);
+  return entry;
+}
+
+function _cacheSet(key, value) {
+  if (_cacheKeys.length >= _cacheMax) {
+    var oldest = _cacheKeys.shift();
+    delete _cacheMap[oldest];
+  }
+  _cacheMap[key] = value;
+  _cacheKeys.push(key);
+}
+
+function _hashContent(content) {
+  // 快速哈希：取长度 + 前 100 字符 + 后 50 字符作为指纹
+  var len = content.length;
+  var head = len > 100 ? content.substring(0, 100) : content;
+  var tail = len > 150 ? content.substring(len - 50) : '';
+  return len + '|' + head + '|' + tail;
+}
+
 function processContent(content, markedInstance) {
   if (!content) return { html: '', placeholders: {} };
+
+  // 短内容跳过缓存（缓存查找本身有开销）
+  if (content.length > 120) {
+    var cacheKey = _hashContent(content);
+    var cached = _cacheGet(cacheKey);
+    if (cached) return cached;
+  }
 
   // Step 0: 提取 ```latex ... ``` 代码块
   var blockResult = extractLatexBlocks(content);
@@ -859,10 +905,10 @@ function processContent(content, markedInstance) {
   if (detection.detected) {
     // 路径 B: LaTeX 文档
     var docResult = renderLatexDocument(detection.innerContent);
-    // 如果有被提取的 LaTeX 代码块，嵌入回去
     if (Object.keys(blockResult.blocks).length > 0) {
       docResult.html = renderLatexBlocks(docResult.html, blockResult.blocks);
     }
+    if (content.length > 120) _cacheSet(cacheKey, docResult);
     return docResult;
   }
 
@@ -870,12 +916,13 @@ function processContent(content, markedInstance) {
   var extracted = extractLatex(textWithoutBlocks);
   var html = markedInstance(extracted.text);
 
-  // 把提取的 LaTeX 代码块渲染后放回去
   if (Object.keys(blockResult.blocks).length > 0) {
     html = renderLatexBlocks(html, blockResult.blocks);
   }
 
-  return { html: html, placeholders: extracted.placeholders };
+  var result = { html: html, placeholders: extracted.placeholders };
+  if (content.length > 120) _cacheSet(cacheKey, result);
+  return result;
 }
 
 /**
