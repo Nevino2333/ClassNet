@@ -109,6 +109,14 @@ var VIDEO_EXTS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
 var AUDIO_EXTS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus'];
 
 function getMediaType(name) {
+  if (!name) return 'other';
+  var lower = name.toLowerCase();
+  // 优先解析文件名中的类型标记（新格式：<userId>_<ts>_<rand>__audio.webm）
+  // 解决 .webm/.mp4 扩展名歧义：录音产出 audio/webm 也带 .webm 后缀
+  if (lower.indexOf('__audio') > -1) return 'audio';
+  if (lower.indexOf('__video') > -1) return 'video';
+  if (lower.indexOf('__image') > -1) return 'image';
+  // 回退到扩展名（旧文件兼容）
   var ext = '';
   var idx = name.lastIndexOf('.');
   if (idx > -1) ext = name.substring(idx).toLowerCase();

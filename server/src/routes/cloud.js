@@ -43,7 +43,13 @@ var storage = multer.diskStorage({
   filename: function(req, file, cb) {
     var userId = req.user.user_id;
     var ext = path.extname(file.originalname) || '.jpg';
-    var filename = userId + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8) + ext;
+    // 将媒体类型编码进文件名，解决 .webm/.mp4 扩展名歧义（录音 audio/webm 与录像 video/webm 都带 .webm）
+    var mediaType = (req.body && req.body.mediaType) || '';
+    var tag = '';
+    if (mediaType === 'audio') tag = '__audio';
+    else if (mediaType === 'video') tag = '__video';
+    else if (mediaType === 'image') tag = '__image';
+    var filename = userId + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8) + tag + ext;
     cb(null, filename);
   }
 });
@@ -147,7 +153,13 @@ var guestStorage = multer.diskStorage({
   filename: function(req, file, cb) {
     var ownerId = req.guestOwnerId;
     var ext = path.extname(file.originalname) || '.bin';
-    var filename = ownerId + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8) + ext;
+    // 将媒体类型编码进文件名，解决 .webm/.mp4 扩展名歧义（录音 audio/webm 与录像 video/webm 都带 .webm）
+    var mediaType = (req.body && req.body.mediaType) || '';
+    var tag = '';
+    if (mediaType === 'audio') tag = '__audio';
+    else if (mediaType === 'video') tag = '__video';
+    else if (mediaType === 'image') tag = '__image';
+    var filename = ownerId + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8) + tag + ext;
     cb(null, filename);
   }
 });

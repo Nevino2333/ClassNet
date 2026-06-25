@@ -250,10 +250,12 @@ function pickMimeTypes(kind) {
   return '';
 }
 
-// 从 MIME 获取扩展名
-function extFromMime(mime) {
+// 从 MIME 获取扩展名，kind: 'audio'/'video' 用于区分歧义 MIME（audio/mp4 应为 .m4a）
+function extFromMime(mime, kind) {
   if (!mime) return '.bin';
   if (mime.indexOf('webm') > -1) return '.webm';
+  // audio/mp4 使用 .m4a 扩展名，避免被云盘识别为视频
+  if (kind === 'audio' && mime.indexOf('mp4') > -1) return '.m4a';
   if (mime.indexOf('mp4') > -1) return '.mp4';
   if (mime.indexOf('ogg') > -1) return '.ogg';
   if (mime.indexOf('mp3') > -1) return '.mp3';
@@ -478,8 +480,9 @@ export default {
       for (var i = 0; i < total; i++) {
         (function(file) {
           var fd = new FormData();
-          // code 必须在 file 之前，否则 multer destination 函数中 req.body.code 为空
+          // code/mediaType 必须在 file 之前，否则 multer 中 req.body 为空
           fd.append('code', self.uploadCode);
+          fd.append('mediaType', getMediaTypeByName(file.name));
           fd.append('file', file);
           axios.post('/api/cloud/guest-upload', fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -661,12 +664,13 @@ export default {
       if (!self.audioBlob) return;
       self.uploading = true;
       self.uploadProgress = 0;
-      var ext = extFromMime(self.audioBlob.type);
+      var ext = extFromMime(self.audioBlob.type, 'audio');
       var filename = 'recording_' + Date.now() + ext;
       var file = new File([self.audioBlob], filename, { type: self.audioBlob.type });
       var fd = new FormData();
-      // code 必须在 file 之前，否则 multer destination 函数中 req.body.code 为空
+      // code/mediaType 必须在 file 之前，否则 multer 中 req.body 为空
       fd.append('code', self.uploadCode);
+      fd.append('mediaType', 'audio');
       fd.append('file', file);
       axios.post('/api/cloud/guest-upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -703,7 +707,7 @@ export default {
         return;
       }
       var constraints = {
-        video: { facingMode: self.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: self.facingMode, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
         audio: true
       };
       navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
@@ -740,7 +744,7 @@ export default {
       }
       self.videoChunks = [];
       var mime = pickMimeTypes('video');
-      var options = {};
+      var options = { videoBitsPerSecond: 4000000 }; // 4Mbps 提升画质
       if (mime) options.mimeType = mime;
       try {
         var recorder = new MediaRecorder(self.videoStream, options);
@@ -826,12 +830,13 @@ export default {
       if (!self.videoBlob) return;
       self.uploading = true;
       self.uploadProgress = 0;
-      var ext = extFromMime(self.videoBlob.type);
+      var ext = extFromMime(self.videoBlob.type, 'video');
       var filename = 'video_' + Date.now() + ext;
       var file = new File([self.videoBlob], filename, { type: self.videoBlob.type });
       var fd = new FormData();
-      // code 必须在 file 之前，否则 multer destination 函数中 req.body.code 为空
+      // code/mediaType 必须在 file 之前，否则 multer 中 req.body 为空
       fd.append('code', self.uploadCode);
+      fd.append('mediaType', 'video');
       fd.append('file', file);
       axios.post('/api/cloud/guest-upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -1088,6 +1093,9 @@ export default {
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 文件上传 */
@@ -1471,7 +1479,7 @@ export default {
 }
 .preview-video {
   width: 100%;
-  max-height: 50vh;
+  max-height: 40vh;
   border-radius: var(--radius-lg, 16px);
   background: #000;
 }

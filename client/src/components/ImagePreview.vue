@@ -10,6 +10,7 @@
           @wheel="onWheel">
           <img :src="imageUrl" class="preview-image"
             :style="{ transform: 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')', transition: (isPinching || isDragging) ? 'none' : 'transform 0.18s ease-out' }"
+            @load="onImageLoad"
             @contextmenu.prevent
             draggable="false" />
         </div>
@@ -64,6 +65,38 @@ export default {
     }
   },
   methods: {
+    // 图片加载完成后，对长图进行智能初始缩放
+    // 长图 contain 后宽度远小于屏幕，看不清细节，初始放大让宽度填满屏幕
+    onImageLoad: function(e) {
+      var img = e.target;
+      var nw = img.naturalWidth;
+      var nh = img.naturalHeight;
+      if (!nw || !nh) return;
+      var screenW = window.innerWidth;
+      var screenH = window.innerHeight;
+      // object-fit: contain 后的实际显示尺寸（max-width:95vw, max-height:95vh）
+      var maxW = screenW * 0.95;
+      var maxH = screenH * 0.95;
+      var imgRatio = nw / nh;
+      var containW, containH;
+      if (maxW / maxH > imgRatio) {
+        containH = maxH;
+        containW = maxH * imgRatio;
+      } else {
+        containW = maxW;
+        containH = maxW / imgRatio;
+      }
+      // 长图判定：contain 后宽度不足屏幕 60%，放大让宽度填满
+      if (containW < screenW * 0.6) {
+        var targetScale = Math.max(1, Math.min(8, maxW / containW));
+        this.scale = targetScale;
+        // 放大后高度超过屏幕，将顶部对齐到屏幕顶部，方便从上往下阅读
+        var scaledH = containH * targetScale;
+        if (scaledH > screenH) {
+          this.y = (scaledH - screenH) / 2;
+        }
+      }
+    },
     onOverlayClick: function() {
       if (this.scale === 1) {
         this.$emit('close');
