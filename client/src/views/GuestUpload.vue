@@ -271,6 +271,7 @@ export default {
       manualChecking: false,
       mode: 'file',
       uploading: false,
+      uploadProgress: 0,
       toastMsg: '',
       toastType: 'success',
       toastTimer: null,
@@ -460,8 +461,9 @@ export default {
       for (var i = 0; i < total; i++) {
         (function(file) {
           var fd = new FormData();
-          fd.append('file', file);
+          // code 必须在 file 之前，否则 multer destination 函数中 req.body.code 为空
           fd.append('code', self.uploadCode);
+          fd.append('file', file);
           axios.post('/api/cloud/guest-upload', fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
             timeout: 120000
@@ -570,22 +572,32 @@ export default {
       var self = this;
       if (!self.audioBlob) return;
       self.uploading = true;
+      self.uploadProgress = 0;
       var ext = extFromMime(self.audioBlob.type);
       var filename = 'recording_' + Date.now() + ext;
       var file = new File([self.audioBlob], filename, { type: self.audioBlob.type });
       var fd = new FormData();
-      fd.append('file', file);
+      // code 必须在 file 之前，否则 multer destination 函数中 req.body.code 为空
       fd.append('code', self.uploadCode);
+      fd.append('file', file);
       axios.post('/api/cloud/guest-upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000
+        timeout: 120000,
+        onUploadProgress: function(e) {
+          if (e.lengthComputable) {
+            self.uploadProgress = Math.round((e.loaded / e.total) * 100);
+          }
+        }
       }).then(function() {
         self.uploading = false;
+        self.uploadProgress = 0;
         self.showToast('录音上传成功', 'success');
         self.resetAudio();
-      }).catch(function() {
+      }).catch(function(err) {
         self.uploading = false;
-        self.showToast('上传失败，请重试', 'error');
+        self.uploadProgress = 0;
+        var msg = (err.response && err.response.data && err.response.data.message) || '上传失败，请重试';
+        self.showToast(msg, 'error');
       });
     },
 
@@ -725,22 +737,32 @@ export default {
       var self = this;
       if (!self.videoBlob) return;
       self.uploading = true;
+      self.uploadProgress = 0;
       var ext = extFromMime(self.videoBlob.type);
       var filename = 'video_' + Date.now() + ext;
       var file = new File([self.videoBlob], filename, { type: self.videoBlob.type });
       var fd = new FormData();
-      fd.append('file', file);
+      // code 必须在 file 之前，否则 multer destination 函数中 req.body.code 为空
       fd.append('code', self.uploadCode);
+      fd.append('file', file);
       axios.post('/api/cloud/guest-upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000
+        timeout: 300000,
+        onUploadProgress: function(e) {
+          if (e.lengthComputable) {
+            self.uploadProgress = Math.round((e.loaded / e.total) * 100);
+          }
+        }
       }).then(function() {
         self.uploading = false;
+        self.uploadProgress = 0;
         self.showToast('视频上传成功', 'success');
         self.resetVideo();
-      }).catch(function() {
+      }).catch(function(err) {
         self.uploading = false;
-        self.showToast('上传失败，请重试', 'error');
+        self.uploadProgress = 0;
+        var msg = (err.response && err.response.data && err.response.data.message) || '上传失败，请重试';
+        self.showToast(msg, 'error');
       });
     },
 
