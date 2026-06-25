@@ -2,12 +2,18 @@
   <div class="cloud-picker-overlay" @click.self="$emit('close')">
     <div class="cloud-picker-sheet">
       <div class="picker-header">
-        <span>选择云盘图片</span>
+        <span>选择云盘文件</span>
         <button class="picker-close" @click="$emit('close')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="picker-search">
         <i class="fa-solid fa-magnifying-glass picker-search-icon"></i>
-        <input v-model="searchQuery" class="picker-search-input" placeholder="搜索图片..." />
+        <input v-model="searchQuery" class="picker-search-input" placeholder="搜索文件..." />
+      </div>
+      <div class="picker-tabs">
+        <button class="picker-tab" :class="{ active: mediaFilter === 'all' }" @click="mediaFilter = 'all'">全部</button>
+        <button class="picker-tab" :class="{ active: mediaFilter === 'image' }" @click="mediaFilter = 'image'"><i class="fa-solid fa-image"></i> 图片</button>
+        <button class="picker-tab" :class="{ active: mediaFilter === 'video' }" @click="mediaFilter = 'video'"><i class="fa-solid fa-video"></i> 视频</button>
+        <button class="picker-tab" :class="{ active: mediaFilter === 'audio' }" @click="mediaFilter = 'audio'"><i class="fa-solid fa-music"></i> 音频</button>
       </div>
       <div class="picker-content">
         <div v-if="loading" class="picker-loading">
@@ -16,7 +22,7 @@
         </div>
         <div v-else-if="filteredFiles.length === 0" class="picker-empty">
           <i class="fa-solid fa-cloud"></i>
-          <span>{{ searchQuery ? '无匹配图片' : '云盘无图片' }}</span>
+          <span>{{ searchQuery ? '无匹配文件' : '云盘无文件' }}</span>
         </div>
         <div v-else class="picker-grid">
           <div
@@ -25,7 +31,13 @@
             class="picker-item"
             @click="selectFile(file)"
           >
-            <img :src="file.url" :alt="file.name" loading="lazy" class="picker-img" />
+            <img v-if="getFileType(file.name) === 'image'" :src="file.url" :alt="file.name" loading="lazy" class="picker-img" />
+            <div v-else-if="getFileType(file.name) === 'video'" class="picker-icon-card">
+              <i class="fa-solid fa-video"></i>
+            </div>
+            <div v-else-if="getFileType(file.name) === 'audio'" class="picker-icon-card picker-audio-card">
+              <i class="fa-solid fa-music"></i>
+            </div>
             <div class="picker-name">{{ file.name }}</div>
           </div>
         </div>
@@ -43,17 +55,28 @@ export default {
     return {
       files: [],
       loading: true,
-      searchQuery: ''
+      searchQuery: '',
+      mediaFilter: 'all'
     };
   },
   computed: {
     filteredFiles: function() {
       var self = this;
-      if (!self.searchQuery) return self.files;
-      var query = self.searchQuery.toLowerCase();
-      return self.files.filter(function(file) {
-        return file.name.toLowerCase().indexOf(query) > -1;
-      });
+      var result = self.files;
+      // 类型筛选
+      if (self.mediaFilter !== 'all') {
+        result = result.filter(function(file) {
+          return self.getFileType(file.name) === self.mediaFilter;
+        });
+      }
+      // 搜索筛选
+      if (self.searchQuery) {
+        var query = self.searchQuery.toLowerCase();
+        result = result.filter(function(file) {
+          return file.name.toLowerCase().indexOf(query) > -1;
+        });
+      }
+      return result;
     }
   },
   mounted: function() {
@@ -71,6 +94,19 @@ export default {
         self.loading = false;
         self.$store.commit('toast/SHOW_TOAST', { message: '加载云盘文件失败', type: 'error' });
       });
+    },
+    getFileType: function(name) {
+      var lower = (name || '').toLowerCase();
+      var VID_EXTS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
+      var AUD_EXTS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus'];
+      var IMG_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+      if (lower.indexOf('__audio') > -1) return 'audio';
+      if (lower.indexOf('__video') > -1) return 'video';
+      if (lower.indexOf('__image') > -1) return 'image';
+      for (var v = 0; v < VID_EXTS.length; v++) { if (lower.indexOf(VID_EXTS[v]) > -1) return 'video'; }
+      for (var a = 0; a < AUD_EXTS.length; a++) { if (lower.indexOf(AUD_EXTS[a]) > -1) return 'audio'; }
+      for (var i = 0; i < IMG_EXTS.length; i++) { if (lower.indexOf(IMG_EXTS[i]) > -1) return 'image'; }
+      return 'other';
     },
     selectFile: function(file) {
       this.$emit('select', file);
@@ -170,6 +206,31 @@ export default {
   outline: none;
   border-color: var(--primary-color);
 }
+
+/* 类型筛选标签 */
+.picker-tabs {
+  display: flex; gap: 6px; padding: 8px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.picker-tab {
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  font-size: 12px; color: var(--text-secondary);
+  background: var(--bg-color); border: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.picker-tab.active {
+  background: var(--primary-color); color: #fff;
+}
+.picker-tab i { margin-right: 3px; }
+
+/* 视频/音频图标卡片 */
+.picker-icon-card {
+  width: 100%; aspect-ratio: 1;
+  border-radius: var(--radius-sm); background: var(--bg-color);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: var(--text-secondary);
+}
+.picker-audio-card { background: linear-gradient(135deg, rgba(var(--primary-rgb),0.08), rgba(var(--primary-rgb),0.02)); }
 
 .picker-content {
   flex: 1;

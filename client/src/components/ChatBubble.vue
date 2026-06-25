@@ -173,7 +173,8 @@ export default {
       showContextMenu: false,
       longPressTimer: null,
       longPressFired: false,
-      longPressImageUrl: null
+      longPressMediaUrl: null,
+      longPressMediaType: null
     };
   },
   computed: {
@@ -289,23 +290,33 @@ export default {
     onContentClick: function(e) {
       var target = e.target;
       while (target && target !== e.currentTarget) {
-        // 处理照片徽章点击（显示图片预览）
-        if (target.classList && target.classList.contains('photo-badge')) {
+        // 跳过视频/音频控件点击（让浏览器处理播放/暂停等）
+        if (target.tagName === 'VIDEO' || target.tagName === 'AUDIO') return;
+        // 跳过播放按钮
+        if (target.classList && target.classList.contains('msg-media-play')) {
+          // 点击播放按钮 → 打开全屏预览
           e.preventDefault();
           e.stopPropagation();
-          var imageUrl = target.getAttribute('data-image-url');
-          if (imageUrl) {
-            this.$emit('preview-image', imageUrl);
+          var wrapper = target.closest('.msg-media-wrapper');
+          if (wrapper) {
+            var mediaEl = wrapper.querySelector('.msg-media');
+            if (mediaEl) {
+              var mediaUrl = mediaEl.getAttribute('data-media-url');
+              if (mediaUrl) {
+                this.$emit('preview-media', { url: mediaUrl, type: mediaEl.getAttribute('data-media-type') });
+              }
+            }
           }
           return;
         }
-        // 处理图片点击（打开预览）
-        if (target.tagName === 'IMG' && target.classList && target.classList.contains('msg-image')) {
+        // 处理媒体元素点击 → 全屏预览（视频/音频/图片通用）
+        if (target.classList && target.classList.contains('msg-media')) {
           e.preventDefault();
           e.stopPropagation();
-          var imageUrl = target.getAttribute('data-image-url');
-          if (imageUrl) {
-            this.$emit('preview-image', imageUrl);
+          var mediaUrl = target.getAttribute('data-media-url');
+          var mediaType = target.getAttribute('data-media-type') || 'image';
+          if (mediaUrl) {
+            this.$emit('preview-media', { url: mediaUrl, type: mediaType });
           }
           return;
         }
@@ -383,17 +394,33 @@ export default {
     },
     renderContent: function(content) {
       if (!content) return '';
-      // Step 1: Extract image URLs and replace with placeholders
-      var imageUrls = [];
+      var IMG_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+      var VID_EXTS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
+      var AUD_EXTS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus'];
+
+      function getMediaType(url) {
+        var lower = url.toLowerCase();
+        // 优先文件名中的类型标记（__audio / __video / __image）
+        if (lower.indexOf('__audio') > -1) return 'audio';
+        if (lower.indexOf('__video') > -1) return 'video';
+        if (lower.indexOf('__image') > -1) return 'image';
+        // 回退到扩展名
+        for (var e = 0; e < VID_EXTS.length; e++) { if (lower.indexOf(VID_EXTS[e]) > -1) return 'video'; }
+        for (var e = 0; e < AUD_EXTS.length; e++) { if (lower.indexOf(AUD_EXTS[e]) > -1) return 'audio'; }
+        for (var e = 0; e < IMG_EXTS.length; e++) { if (lower.indexOf(IMG_EXTS[e]) > -1) return 'image'; }
+        // 兜底：photos 目录视为图片
+        if (lower.indexOf('/photos/') > -1) return 'image';
+        return 'other';
+      }
+
+      // Step 1: Extract media URLs (image/video/audio) and replace with placeholders
+      var mediaItems = []; // { url, type, placeholder }
       var text = content.replace(/(\/api\/cloud\/files\/[^\s<>"]+|\/resources\/[^\s<>"]+)/g, function(url) {
-        // 检查是否是图片 URL（通过扩展名判断）
-        var lowerUrl = url.toLowerCase();
-        if (lowerUrl.indexOf('.jpg') > -1 || lowerUrl.indexOf('.jpeg') > -1 ||
-            lowerUrl.indexOf('.png') > -1 || lowerUrl.indexOf('.gif') > -1 ||
-            lowerUrl.indexOf('.webp') > -1 || lowerUrl.indexOf('.bmp') > -1 ||
-            lowerUrl.indexOf('/photos/') > -1) {
-          imageUrls.push(url);
-          return '%%IMG' + (imageUrls.length - 1) + '%%';
+        var type = getMediaType(url);
+        if (type === 'image' || type === 'video' || type === 'audio') {
+          var idx = mediaItems.length;
+          mediaItems.push({ url: url, type: type });
+          return '%%MEDIA' + idx + '%%';
         }
         return url;
       });
@@ -415,17 +442,29 @@ export default {
         var regex = new RegExp('(' + escaped + ')', 'gi');
         html = html.replace(regex, '<mark class="search-highlight">$1</mark>');
       }
-      // Step 5: Restore image URLs as inline images (click to preview, long-press for menu)
-      for (var i = 0; i < imageUrls.length; i++) {
-        var placeholder = '%%IMG' + i + '%%';
-        var imgUrl = imageUrls[i];
-        var escapedUrl = imgUrl
+      // Step 5: Restore media URLs as inline elements
+      for (var i = 0; i < mediaItems.length; i++) {
+        var placeholder = '%%MEDIA' + i + '%%';
+        var item = mediaItems[i];
+        var escapedUrl = item.url
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
-        var imgHtml = '<img class="msg-image" data-image-url="' + escapedUrl + '" src="' + escapedUrl + '" alt="图片" loading="lazy" />';
-        html = html.replace(placeholder, imgHtml);
+        var mediaHtml = '';
+        if (item.type === 'image') {
+          mediaHtml = '<img class="msg-image msg-media" data-media-url="' + escapedUrl + '" data-media-type="image" src="' + escapedUrl + '" alt="图片" loading="lazy" />';
+        } else if (item.type === 'video') {
+          mediaHtml = '<div class="msg-media-wrapper msg-video-wrapper">' +
+            '<video class="msg-video msg-media" data-media-url="' + escapedUrl + '" data-media-type="video" src="' + escapedUrl + '" preload="metadata" controls></video>' +
+            '<div class="msg-media-play"><i class="fa-solid fa-play"></i></div>' +
+            '</div>';
+        } else if (item.type === 'audio') {
+          mediaHtml = '<div class="msg-media-wrapper msg-audio-wrapper">' +
+            '<audio class="msg-audio msg-media" data-media-url="' + escapedUrl + '" data-media-type="audio" src="' + escapedUrl + '" preload="metadata" controls></audio>' +
+            '</div>';
+        }
+        html = html.replace(placeholder, mediaHtml);
       }
       // Step 6: Restore other URLs as clickable links
       for (var i = 0; i < urls.length; i++) {
@@ -448,20 +487,24 @@ export default {
     onTouchStart: function(e) {
       var self = this;
       self.longPressFired = false;
-      self.longPressImageUrl = null;
+      self.longPressMediaUrl = null;
+      self.longPressMediaType = null;
 
-      // 检测触摸点是否在图片或照片徽章上
+      // 检测触摸点是否在媒体元素上（图片/视频/音频/照片徽章）
       var touch = e.touches[0];
       var target = document.elementFromPoint(touch.clientX, touch.clientY);
 
-      // 检查是否是照片徽章
+      self.longPressMediaUrl = null;
+      self.longPressMediaType = null;
       while (target && target !== self.$el) {
         if (target.classList && target.classList.contains('photo-badge')) {
-          self.longPressImageUrl = target.getAttribute('data-image-url');
+          self.longPressMediaUrl = target.getAttribute('data-media-url') || target.getAttribute('data-image-url');
+          self.longPressMediaType = 'image';
           break;
         }
-        if (target.tagName === 'IMG' && target.classList && target.classList.contains('msg-image')) {
-          self.longPressImageUrl = target.getAttribute('data-image-url');
+        if (target.classList && target.classList.contains('msg-media')) {
+          self.longPressMediaUrl = target.getAttribute('data-media-url');
+          self.longPressMediaType = target.getAttribute('data-media-type') || 'image';
           break;
         }
         target = target.parentNode;
@@ -469,12 +512,13 @@ export default {
 
       self.longPressTimer = setTimeout(function() {
         self.longPressFired = true;
-        // 长按统一触发 context-menu，附带 imageUrl（如有）
+        // 长按统一触发 context-menu，附带媒体 URL（如有）
         self.$emit('context-menu', self.message, {
           clientX: touch.clientX,
           clientY: touch.clientY,
           preventDefault: function() {},
-          imageUrl: self.longPressImageUrl
+          imageUrl: self.longPressMediaUrl,
+          mediaType: self.longPressMediaType
         });
       }, 600);
     },
@@ -1018,5 +1062,69 @@ export default {
 
 .msg-image:active {
   opacity: 0.85;
+}
+
+/* 视频/音频内联播放器 */
+.msg-media-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.msg-video-wrapper {
+  width: 280px;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+}
+
+.msg-video {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  border-radius: var(--radius-md);
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.msg-media-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.msg-media-play i {
+  color: #fff;
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+.msg-audio-wrapper {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.msg-audio {
+  display: block;
+  width: 100%;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.msg-media {
+  cursor: pointer;
 }
 </style>

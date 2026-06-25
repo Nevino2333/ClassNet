@@ -198,7 +198,7 @@
               :senderTitle="getSenderTitle(msg.sender_id || msg.user_id)"
               @recall="recallMessage"
               @context-menu="openContextMenu"
-              @preview-image="previewImage"
+              @preview-media="previewMedia"
               @toggle-reaction="toggleReaction"
               @scroll-to="scrollToMessage"
             />
@@ -251,7 +251,7 @@
           <button class="ctx-item" @click="handleContextAction('forward')">
             <i class="fa-solid fa-share"></i> 转发
           </button>
-          <button v-if="contextMenuImageUrl" class="ctx-item" @click="handleContextAction('saveImage')">
+          <button v-if="contextMenuMediaUrl" class="ctx-item" @click="handleContextAction('saveMedia')">
             <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
           </button>
           <button v-if="contextMenuTarget && isOwnMessage(contextMenuTarget)" class="ctx-item ctx-item-danger" @click="handleContextAction('delete')">
@@ -262,7 +262,7 @@
     </transition>
 
     <!-- Image Preview -->
-    <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" @close="closeImagePreview" />
+    <ImagePreview :visible="showImagePreview" :image-url="mediaPreviewUrl" :media-type="mediaPreviewType" @close="closeImagePreview" />
 
     <!-- Reaction Picker -->
     <transition name="fade-quick">
@@ -710,10 +710,11 @@ export default {
       showContextMenu: false,
       contextMenuTarget: null,
       contextMenuPos: { x: 0, y: 0 },
-      contextMenuImageUrl: null,
-      // Image preview
+      contextMenuMediaUrl: null,
+      // Media preview (image/video/audio)
       showImagePreview: false,
-      imagePreviewUrl: null,
+      mediaPreviewUrl: null,
+      mediaPreviewType: 'image',
       // Reaction picker
       showReactionPicker: false,
       reactionPickerTarget: null,
@@ -1786,8 +1787,8 @@ export default {
       var self = this;
       var isForward = !!(options && options.forwardData);
       var rawContent = isForward ? JSON.stringify(options.forwardData) : self.inputText.trim();
-      // 将云盘图片标记转换为实际 URL
-      var content = rawContent.replace(/\[cloud-img:([^\]]+)\]/g, function(match, filename) {
+      // 将云盘媒体标记转换为实际 URL
+      var content = rawContent.replace(/\[cloud-(img|video|audio):([^\]]+)\]/g, function(match, tag, filename) {
         return '/api/cloud/files/' + encodeURIComponent(filename);
       });
       var msgType = isForward ? 'community_forward' : 'text';
@@ -1851,8 +1852,16 @@ export default {
       this.showEmoji = false;
     },
     onCloudImageSelect: function(file) {
-      // 插入云盘图片标记，发送时会被转换为实际 URL
-      this.inputText += '[cloud-img:' + file.name + ']';
+      var lower = (file.name || '').toLowerCase();
+      var tag = 'cloud-img';
+      if (lower.indexOf('__video') > -1 || lower.indexOf('.mp4') > -1 || lower.indexOf('.mov') > -1 ||
+          lower.indexOf('.webm') > -1 || lower.indexOf('.mkv') > -1 || lower.indexOf('.avi') > -1 || lower.indexOf('.3gp') > -1) {
+        tag = 'cloud-video';
+      } else if (lower.indexOf('__audio') > -1 || lower.indexOf('.mp3') > -1 || lower.indexOf('.m4a') > -1 ||
+                 lower.indexOf('.aac') > -1 || lower.indexOf('.wav') > -1 || lower.indexOf('.ogg') > -1 || lower.indexOf('.opus') > -1) {
+        tag = 'cloud-audio';
+      }
+      this.inputText += '[' + tag + ':' + file.name + ']';
       this.showCloudPicker = false;
     },
     scrollToBottom: function() {
@@ -2668,47 +2677,54 @@ export default {
       }
       this.contextMenuTarget = msg;
       this.contextMenuPos = { x: x, y: y };
-      this.contextMenuImageUrl = event.imageUrl || null;
+      this.contextMenuMediaUrl = event.imageUrl || null;
       this.showContextMenu = true;
     },
     closeContextMenu: function() {
       this.showContextMenu = false;
       this.contextMenuTarget = null;
-      this.contextMenuImageUrl = null;
+      this.contextMenuMediaUrl = null;
     },
-    // Image preview
-    previewImage: function(imageUrl) {
-      this.imagePreviewUrl = imageUrl;
+    // Media preview (image/video/audio)
+    previewMedia: function(media) {
+      // 兼容旧的字符串格式和新的对象格式
+      if (typeof media === 'string') {
+        this.mediaPreviewUrl = media;
+        this.mediaPreviewType = 'image';
+      } else {
+        this.mediaPreviewUrl = media.url;
+        this.mediaPreviewType = media.type || 'image';
+      }
       this.showImagePreview = true;
     },
     closeImagePreview: function() {
       this.showImagePreview = false;
-      this.imagePreviewUrl = null;
+      this.mediaPreviewUrl = null;
+      this.mediaPreviewType = 'image';
     },
-    saveImageToCloud: function(imageUrl) {
+    saveMediaToCloud: function(mediaUrl) {
       var self = this;
-      if (!imageUrl) return;
+      if (!mediaUrl) return;
 
-      // 调用后端 API 转存图片
-      api.post('/cloud/save-from-url', { url: imageUrl }).then(function(res) {
+      api.post('/cloud/save-from-url', { url: mediaUrl }).then(function(res) {
         if (res.data.code === 200) {
-          self.$store.commit('toast/SHOW_TOAST', { message: '图片已转存到云盘', type: 'success' });
+          self.$store.commit('toast/SHOW_TOAST', { message: '文件已转存到云盘', type: 'success' });
         } else {
           self.$store.commit('toast/SHOW_TOAST', { message: res.data.message || '转存失败', type: 'error' });
         }
       }).catch(function(err) {
-        console.error('转存图片失败:', err);
+        console.error('转存文件失败:', err);
         self.$store.commit('toast/SHOW_TOAST', { message: '转存失败，请重试', type: 'error' });
       });
     },
     handleContextAction: function(action) {
       var self = this;
       var msg = self.contextMenuTarget;
-      var imageUrl = self.contextMenuImageUrl;
+      var imageUrl = self.contextMenuMediaUrl;
 
-      if (action === 'saveImage') {
+      if (action === 'saveMedia') {
         self.closeContextMenu();
-        self.saveImageToCloud(imageUrl);
+        self.saveMediaToCloud(imageUrl);
         return;
       }
 

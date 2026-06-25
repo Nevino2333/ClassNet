@@ -1046,7 +1046,7 @@
     />
 
     <!-- Image Preview -->
-    <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" @close="closeImagePreview" />
+    <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" :media-type="mediaPreviewType" @close="closeImagePreview" />
 
     <!-- Image long-press menu -->
     <transition name="fade-quick">
@@ -1128,7 +1128,37 @@ customRenderer.image = function(href, title, text) {
   var alt = text || '图片';
   var safeUrl = url.replace(/"/g, '&quot;');
   var safeAlt = alt.replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  return '<img class="md-image" data-preview-url="' + safeUrl + '" src="' + safeUrl + '" alt="' + safeAlt + '" loading="lazy" />';
+  return '<img class="md-media" data-media-url="' + safeUrl + '" data-media-type="image" src="' + safeUrl + '" alt="' + safeAlt + '" loading="lazy" />';
+};
+// 链接渲染器：检测视频/音频链接并嵌入播放器
+var origLinkRenderer = customRenderer.link;
+customRenderer.link = function(href, title, text) {
+  var url = href || '';
+  var safeUrl = url.replace(/"/g, '&quot;');
+  var lower = url.toLowerCase();
+  var mediaType = null;
+  // 检测视频/音频扩展名或标记
+  if (lower.indexOf('__video') > -1 || lower.indexOf('.mp4') > -1 || lower.indexOf('.mov') > -1 ||
+      lower.indexOf('.webm') > -1 || lower.indexOf('.mkv') > -1 || lower.indexOf('.avi') > -1 || lower.indexOf('.3gp') > -1) {
+    mediaType = 'video';
+  } else if (lower.indexOf('__audio') > -1 || lower.indexOf('.mp3') > -1 || lower.indexOf('.m4a') > -1 ||
+             lower.indexOf('.aac') > -1 || lower.indexOf('.wav') > -1 || lower.indexOf('.ogg') > -1 || lower.indexOf('.opus') > -1) {
+    mediaType = 'audio';
+  }
+  if (mediaType === 'video') {
+    return '<div class="md-media-wrapper md-video-wrapper">' +
+      '<video class="md-video md-media" data-media-url="' + safeUrl + '" data-media-type="video" src="' + safeUrl + '" preload="metadata" controls></video>' +
+      '<div class="md-media-hint">点击视频可全屏预览</div>' +
+      '</div>';
+  }
+  if (mediaType === 'audio') {
+    return '<div class="md-media-wrapper md-audio-wrapper">' +
+      '<audio class="md-audio md-media" data-media-url="' + safeUrl + '" data-media-type="audio" src="' + safeUrl + '" preload="metadata" controls></audio>' +
+      '</div>';
+  }
+  // 普通链接：使用默认渲染
+  if (origLinkRenderer) return origLinkRenderer.call(this, href, title, text);
+  return '<a href="' + safeUrl + '" target="_blank" rel="noopener">' + (text || safeUrl) + '</a>';
 };
 
 marked.setOptions({
@@ -1170,6 +1200,7 @@ export default {
       // 图片预览
       showImagePreview: false,
       imagePreviewUrl: '',
+      mediaPreviewType: 'image',
       // 图片长按菜单
       showImageMenu: false,
       imageMenuPos: { x: 0, y: 0 },
@@ -1376,8 +1407,9 @@ export default {
     // === 图片预览与长按菜单 ===
     onMarkdownClick: function(e) {
       var target = e.target;
-      if (target.tagName === 'IMG' && target.classList && target.classList.contains('md-image')) {
-        // 若刚刚触发了长按菜单，则忽略随之而来的 click，避免点击预览与长按冲突
+      // 跳过视频/音频原生控件点击
+      if (target.tagName === 'VIDEO' || target.tagName === 'AUDIO') return;
+      if (target.classList && target.classList.contains('md-media')) {
         if (this.mdLongPressTriggered) {
           this.mdLongPressTriggered = false;
           e.preventDefault();
@@ -1386,25 +1418,27 @@ export default {
         }
         e.preventDefault();
         e.stopPropagation();
-        var url = target.getAttribute('data-preview-url') || target.src;
-        this.previewImage(url);
+        var url = target.getAttribute('data-media-url') || target.getAttribute('data-preview-url') || target.src;
+        var type = target.getAttribute('data-media-type') || 'image';
+        this.previewMedia({ url: url, type: type });
       }
     },
     onMarkdownTouchStart: function(e) {
       var self = this;
       var touch = e.touches[0];
       var target = document.elementFromPoint(touch.clientX, touch.clientY);
-      // 检测是否触摸在图片上
-      var imgEl = null;
+      // 检测是否触摸在媒体元素上（图片/视频/音频）
+      var mediaEl = null;
       while (target && target !== e.currentTarget) {
-        if (target.tagName === 'IMG' && target.classList && target.classList.contains('md-image')) {
-          imgEl = target;
+        if (target.classList && target.classList.contains('md-media')) {
+          mediaEl = target;
           break;
         }
         target = target.parentNode;
       }
-      if (!imgEl) return;
-      var url = imgEl.getAttribute('data-preview-url') || imgEl.src;
+      if (!mediaEl) return;
+      var url = mediaEl.getAttribute('data-media-url') || mediaEl.getAttribute('data-preview-url') || mediaEl.src;
+      var mediaType = mediaEl.getAttribute('data-media-type') || 'image';
       if (self.mdLongPressTimer) {
         clearTimeout(self.mdLongPressTimer);
         self.mdLongPressTimer = null;
@@ -1438,9 +1472,18 @@ export default {
         this.mdLongPressTimer = null;
       }
     },
-    previewImage: function(url) {
-      this.imagePreviewUrl = url;
+    previewMedia: function(media) {
+      if (typeof media === 'string') {
+        this.imagePreviewUrl = media;
+        this.mediaPreviewType = 'image';
+      } else {
+        this.imagePreviewUrl = media.url;
+        this.mediaPreviewType = media.type || 'image';
+      }
       this.showImagePreview = true;
+    },
+    previewImage: function(url) {
+      this.previewMedia({ url: url, type: 'image' });
     },
     closeImagePreview: function() {
       this.showImagePreview = false;
@@ -3263,8 +3306,8 @@ export default {
   margin-left: -20px;
 }
 
-/* 论坛图片：可点击预览/长按转存 */
-.markdown-body >>> .md-image {
+/* 论坛媒体元素：可点击预览/长按转存 */
+.markdown-body >>> .md-media {
   max-width: 100%;
   max-height: 360px;
   border-radius: var(--radius-md);
@@ -3275,8 +3318,32 @@ export default {
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s;
 }
-.markdown-body >>> .md-image:active {
+.markdown-body >>> .md-media:active {
   opacity: 0.85;
+}
+.markdown-body >>> .md-video-wrapper {
+  max-width: 480px;
+  margin: 8px 0;
+}
+.markdown-body >>> .md-video {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: #000;
+}
+.markdown-body >>> .md-audio-wrapper {
+  max-width: 320px;
+  margin: 6px 0;
+}
+.markdown-body >>> .md-audio {
+  width: 100%;
+  height: 44px;
+  border-radius: var(--radius-sm);
+}
+.markdown-body >>> .md-media-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  text-align: center;
 }
 
 /* 图片长按菜单 */
