@@ -893,10 +893,13 @@ export default {
 
 <style scoped>
 .guest-upload-page {
-  min-height: 100vh;
+  height: 100%;
   background: var(--bg-color, #f2f2f7);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* 顶部 */
@@ -1468,7 +1471,7 @@ export default {
 }
 .preview-video {
   width: 100%;
-  max-height: 400px;
+  max-height: 50vh;
   border-radius: var(--radius-lg, 16px);
   background: #000;
 }

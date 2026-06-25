@@ -819,10 +819,13 @@ export default {
 
 <style scoped>
 .cloud-upload-page {
-  min-height: 100vh;
+  height: 100%;
   background: var(--bg-color, #f2f2f7);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 .upload-header {
   display: flex;
@@ -1305,7 +1308,7 @@ export default {
 }
 .preview-video {
   width: 100%;
-  max-height: 400px;
+  max-height: 50vh;
   border-radius: var(--radius-lg, 16px);
   background: #000;
 }

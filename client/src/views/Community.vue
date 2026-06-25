@@ -527,7 +527,7 @@
             <button v-if="!hasVoted(currentPost)" class="btn-primary poll-submit-btn" @click="submitSurveyVote(currentPost)">提交问卷</button>
           </div>
           <div v-if="currentPost.title && currentPost.type === 'forum'" class="full-detail-title">{{ currentPost.title }}</div>
-          <div v-if="currentPost.type !== 'poll' && currentPost.type !== 'survey'" class="full-detail-content markdown-body" v-html="renderMarkdown(currentPost.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart"></div>
+          <div v-if="currentPost.type !== 'poll' && currentPost.type !== 'survey'" class="full-detail-content markdown-body" v-html="renderMarkdown(currentPost.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart" @touchmove="onMarkdownTouchMove" @touchend="onMarkdownTouchEnd"></div>
           <div v-if="getPlaylistShare(currentPost)" class="playlist-share-card" @click="openPlaylistFromPost(currentPost)">
             <div class="playlist-share-icon"><i class="fa-solid fa-music"></i></div>
             <div class="playlist-share-info">
@@ -580,7 +580,7 @@
                   <span class="comment-author">{{ comment.net_name || '未知用户' }}</span>
                   <span class="comment-time">{{ formatTime(comment.created_at) }}</span>
                 </div>
-                <div class="comment-text markdown-body" v-html="renderMarkdown(comment.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart"></div>
+                <div class="comment-text markdown-body" v-html="renderMarkdown(comment.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart" @touchmove="onMarkdownTouchMove" @touchend="onMarkdownTouchEnd"></div>
                 <div class="comment-actions">
                   <button class="comment-action-btn" @click="likeComment(comment)">
                     <i :class="comment.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"></i>
@@ -611,7 +611,7 @@
                         <span v-if="reply.parent_author" class="reply-to">@{{ reply.parent_author }}</span>
                         <span class="comment-time">{{ formatTime(reply.created_at) }}</span>
                       </div>
-                      <div class="comment-text markdown-body" v-html="renderMarkdown(reply.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart"></div>
+                      <div class="comment-text markdown-body" v-html="renderMarkdown(reply.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart" @touchmove="onMarkdownTouchMove" @touchend="onMarkdownTouchEnd"></div>
                       <div class="comment-actions">
                         <button class="comment-action-btn" @click="likeComment(reply)">
                           <i :class="reply.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"></i>
@@ -1175,6 +1175,7 @@ export default {
       imageMenuPos: { x: 0, y: 0 },
       imageMenuUrl: '',
       mdLongPressTimer: null,
+      mdLongPressTriggered: false,
       newPost: { content: '', title: '', groupIds: [], isAnonymous: false, type: 'forum', tags: [], foodForm: { dish_name: '', canteen: '', window: '' }, hotForm: { title: '', location: '' }, pollForm: { title: '', options: ['', ''], allowMultiple: false, maxChoices: 1 }, surveyForm: { title: '', questions: [{ question: '', type: 'text', options: [] }] } },
       showCreateFood: false,
       foodForm: { dish_name: '', canteen: '', window: '', reason: '' },
@@ -1376,6 +1377,13 @@ export default {
     onMarkdownClick: function(e) {
       var target = e.target;
       if (target.tagName === 'IMG' && target.classList && target.classList.contains('md-image')) {
+        // 若刚刚触发了长按菜单，则忽略随之而来的 click，避免点击预览与长按冲突
+        if (this.mdLongPressTriggered) {
+          this.mdLongPressTriggered = false;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         var url = target.getAttribute('data-preview-url') || target.src;
@@ -1401,8 +1409,10 @@ export default {
         clearTimeout(self.mdLongPressTimer);
         self.mdLongPressTimer = null;
       }
+      self.mdLongPressTriggered = false;
       self.mdLongPressTimer = setTimeout(function() {
         // 长按：显示图片菜单
+        self.mdLongPressTriggered = true;
         var x = touch.clientX;
         var y = touch.clientY;
         var menuWidth = 160;
@@ -1413,6 +1423,20 @@ export default {
         self.imageMenuPos = { x: x, y: y };
         self.showImageMenu = true;
       }, 600);
+    },
+    onMarkdownTouchMove: function() {
+      // 手指移动即取消长按（避免滚动/拖动误触发菜单）
+      if (this.mdLongPressTimer) {
+        clearTimeout(this.mdLongPressTimer);
+        this.mdLongPressTimer = null;
+      }
+    },
+    onMarkdownTouchEnd: function() {
+      // 手指抬起：若长按未触发则清除定时器，让 click 正常进入预览
+      if (this.mdLongPressTimer) {
+        clearTimeout(this.mdLongPressTimer);
+        this.mdLongPressTimer = null;
+      }
     },
     previewImage: function(url) {
       this.imagePreviewUrl = url;
