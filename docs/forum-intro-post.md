@@ -1,139 +1,163 @@
-[center]# ClassNet —— 自建智慧校园平台，班级的数字化中枢[/center]
+[center]
+[size=24][b][color=#007AFF]ClassNet[/color][/b][/size]
+[size=14]—— 自建智慧校园平台，班级的数字化中枢 ——[/size]
+[/center]
 
-[center]> 一个班级里能用到的一切——聊天、AI 助手、社区论坛、云盘、笔记、天气、音乐——全在一个网页里。[/center]
-
----
-
-## 为什么做这个？
-
-学校给我们班配了学生平板。但说实话，这些设备除了看看课件、刷刷题，几乎没有"班级自己的东西"——聊天用 QQ、交作业用微信、文件传来传去靠 U 盘。功能割裂、数据散落、体验割裂。
-
-我就想：能不能把这些平板真正利用起来？搭一个 **班级专属的一体化平台**，聊天、AI、论坛、云盘、笔记、天气、音乐全在同一个网页里，平板打开浏览器就能用。
-
-于是从零开始写了 ClassNet。前后两个多月，AI 辅助 coding，一个人全栈。
+[center][quote]一个班级里能用到的一切——聊天、AI 助手、社区论坛、云盘、笔记、天气、音乐——全在一个网页里。[/quote][/center]
 
 ---
 
-## 能干什么？
+[size=18][b]为什么做这个？[/b][/size]
 
-[ASUCCESS]以下所有功能均已在最新版本中可用，浏览器打开即用，无需安装 App。[/ASUCCESS]
+学校给我们班配了学生平板。但说实话，这些设备除了看看课件、刷刷题，几乎没有 [b]"班级自己的东西"[/b]——聊天用 QQ、交作业用微信、文件传来传去靠 U 盘。功能割裂、数据散落、体验割裂。
 
-### 即时通讯
+我就想：能不能把这些平板真正利用起来？搭一个 [b][color=#007AFF]班级专属的一体化平台[/color][/b]，聊天、AI、论坛、云盘、笔记、天气、音乐全在同一个网页里，平板打开浏览器就能用。
 
-- WebSocket 实时聊天，支持私聊 + 群聊 + 广播
-- @提及、消息引用回复、表情反应、转发
-- 群聊成员管理（踢人/禁言/转让群主）
-
-### AI 对话助手
-
-- 接入云端大模型，支持 Markdown 回复
-- LaTeX 数学公式渲染（完整文档 + KaTeX 行内公式）
-- Mermaid 流程图/时序图/甘特图
-- 对话记录可转发到论坛或聊天
-
-### 社区论坛
-
-- 发帖/评论/点赞/转发
-- Markdown + LaTeX + Mermaid 编辑器
-- 匿名发帖模式
-- 等级系统（每日签到、经验值、连续签到奖励）
-
-### 云盘
-
-- 文件上传/下载/预览（图片/视频/音频）
-- 笔记编辑器（Markdown + LaTeX + Mermaid）
-- 免登录上传码（访客通过上传码提交文件）
-
-### 笔记系统
-
-- 专业 Markdown 编辑器（粗体/斜体/删除线/代码/表格/任务列表）
-- LaTeX 完整文档渲染 + KaTeX 数学公式
-- Mermaid 图表（流程图/时序图/甘特图/类图/ER 图/饼图……共 20+ 种）
-- 文件附件管理、全屏专注模式、导入/导出 .md 文件
-- 笔记可设为仅自己可见，云端实时保存
-
-### 音乐盒子
-
-- 内置播放器，歌单管理，支持本地音乐文件上传
-- 歌单可转发到论坛
-
-### 天气
-
-- 实时天气卡片（温度/湿度/风力/能见度）
-- 7 日天气预报 + 生活指数
-
-### 系统功能
-
-- 深色/浅色主题 + 动态壁纸（内置渐变 + 自定义图片/视频）
-- 等级系统（签到/发帖/评论/获赞 赚经验）
-- 管理面板（用户管理/广播通知/应用管控/资源管理）
-- 版本号自动管理（构建时 PATCH 自动加一）
-- 新版本桌面角标提示 + 更新介绍
+于是从零开始写了 [b]ClassNet[/b]。前后两个多月，AI 辅助 coding，一个人全栈。
 
 ---
 
-## 技术栈
+[size=18][b]能干什么？[/b][/size]
 
-| 层 | 技术 |
-|------|------|
-| 前端 | Vue 2.7 + Vue Router + Vuex |
-| 构建 | Vite 5 |
-| 样式 | SCSS + CSS 变量 + iOS 风格设计系统 |
-| 后端 | Node.js + Express |
-| 数据库 | SQLite（better-sqlite3，WAL 模式） |
-| 实时通信 | WebSocket（ws） |
-| 图表 | Mermaid 11 |
-| 数学 | KaTeX 0.16 |
-| Markdown | marked 4 |
-| 视频 | Video.js 8 + HLS |
-| 认证 | bcryptjs + JWT（jose） |
+[BSUCCESS]以下所有功能均已在最新版本中可用，浏览器打开即用，无需安装任何 App。[/BSUCCESS]
+
+[size=16][b]💬 即时通讯[/b][/size]
+[list]
+[*]WebSocket 实时聊天，支持私聊 + 群聊 + 广播
+[*]@提及、消息引用回复、表情反应、转发消息
+[*]群聊成员管理（踢人 / 禁言 / 转让群主）
+[/list]
+
+[size=16][b]🤖 AI 对话助手[/b][/size]
+[list]
+[*]接入云端大模型，支持 Markdown 格式回复
+[*]LaTeX 数学公式渲染（完整文档 + KaTeX 行内公式）
+[*]Mermaid 流程图 / 时序图 / 甘特图
+[*]对话记录可一键转发到论坛或聊天
+[/list]
+
+[size=16][b]📝 社区论坛[/b][/size]
+[list]
+[*]发帖 / 评论 / 点赞 / 转发
+[*]Markdown + LaTeX + Mermaid 编辑器
+[*]匿名发帖模式
+[*]等级系统（每日签到、经验值、连续签到奖励）
+[/list]
+
+[size=16][b]☁️ 云盘[/b][/size]
+[list]
+[*]文件上传 / 下载 / 预览（图片 / 视频 / 音频）
+[*]笔记编辑器（Markdown + LaTeX + Mermaid）
+[*]免登录上传码（访客通过上传码提交文件，防爆破保护）
+[/list]
+
+[size=16][b]📋 笔记系统[/b][/size]
+[list]
+[*]专业 Markdown 编辑器（[b]粗体[/b] / [i]斜体[/i] / [del]删除线[/del] / 代码 / 表格 / 任务列表）
+[*]LaTeX 完整文档渲染 + KaTeX 数学公式
+[*]Mermaid 图表（流程图 / 时序图 / 甘特图 / 类图 / ER 图 / 饼图……共 [b]20+[/b] 种）
+[*]文件附件管理、全屏专注模式、导入 / 导出 .md 文件
+[*]笔记可设为仅自己可见，云端实时保存
+[/list]
+
+[size=16][b]🎵 音乐盒子[/b][/size]
+[list]
+[*]内置播放器（播放 / 暂停 / 上一曲 / 下一曲）
+[*]歌单管理（创建 / 编辑 / 删除），支持本地音乐上传
+[*]歌单可转发到论坛
+[/list]
+
+[size=16][b]🌤️ 天气[/b][/size]
+[list]
+[*]实时天气卡片（温度 / 湿度 / 风力 / 能见度）
+[*]7 日天气预报 + 生活指数（紫外线 / 穿衣 / 运动等）
+[/list]
+
+[size=16][b]⚙️ 系统功能[/b][/size]
+[list]
+[*]深色 / 浅色主题 + [b]动态壁纸[/b]（内置渐变 + 自定义图片 / 视频）
+[*]等级系统（签到 / 发帖 / 评论 / 获赞均可获得经验）
+[*]管理面板（用户管理 / 广播通知 / 应用管控 / 资源管理）
+[*]版本号自动管理（SemVer，构建时 PATCH 自动 +1）
+[*]新版本桌面角标提示 + 更新介绍
+[/list]
 
 ---
 
-## 征集 Logo！
+[size=18][b]技术栈[/b][/size]
 
-[AINFO]项目到现在还没有正式 Logo，一直用默认图标凑合。特此征集！[/AINFO]
-
-**设计要求：**
-
-- 纯几何抽象，[b]不要字母[/b]（像 Apple 的苹果、Twitter 的鸟那样）
-- 意象上能体现"教室 + 同学 + 网络连接"
-- 极简、标志性强，缩小到 16px 也能辨认
-
-有想法的朋友可以在评论区直接发图，或在 GitHub 提 Issue / PR。选中了署上你的名字！
+[table]
+[tr][td][b]层[/b][/td][td][b]技术[/b][/td][/tr]
+[tr][td]前端[/td][td]Vue 2.7 + Vue Router + Vuex[/td][/tr]
+[tr][td]构建[/td][td]Vite 5[/td][/tr]
+[tr][td]样式[/td][td]SCSS + CSS 变量 + iOS 风格设计系统[/td][/tr]
+[tr][td]后端[/td][td]Node.js + Express[/td][/tr]
+[tr][td]数据库[/td][td]SQLite（better-sqlite3，WAL 模式）[/td][/tr]
+[tr][td]实时通信[/td][td]WebSocket（ws）[/td][/tr]
+[tr][td]图表[/td][td]Mermaid 11[/td][/tr]
+[tr][td]数学[/td][td]KaTeX 0.16[/td][/tr]
+[tr][td]Markdown[/td][td]marked 4[/td][/tr]
+[tr][td]视频[/td][td]Video.js 8 + HLS[/td][/tr]
+[tr][td]认证[/td][td]bcryptjs + JWT（jose）[/td][/tr]
+[/table]
 
 ---
 
-## 开发心得
+[size=18][b][color=#FF9500]征集 Logo！[/color][/b][/size]
 
-### 1. AI 写代码不等于不管代码
+[AINFO]项目到现在还没有正式 Logo，一直用默认图标凑合。特此向社区征集！[/AINFO]
 
-项目 80% 的代码是 Claude 写的。但 AI 写的代码需要你来——审查逻辑、统一风格、修边界 bug。AI 是"写得快"，你是"写得对"。
+[ABASIC][b]设计要求：[/b]
 
-### 2. 版本号省心方案
+[list=1]
+[*]纯几何抽象，[b][color=#FF3B30]不要字母[/color][/b]（像 Apple 的苹果、Twitter 的鸟那样，符号本身就是品牌）
+[*]意象上能体现 [b]"教室 + 同学 + 网络连接"[/b]
+[*]极简、标志性强，缩小到 [b]16px[/b] 也能清晰辨认
+[/list][/ABASIC]
 
-SemVer 的 PATCH 号构建时自动加一，日常完全不碰版本号。新功能完成时手动改一下 MINOR。changelog 从 git log 自动生成。
+有想法的朋友可以直接在评论区发图，或者到 GitHub 提 Issue / PR。
 
-### 3. 单文件 SQLite 真香
+[ASUCCESS]选中了署上你的名字，写在项目 About 里！[/ASUCCESS]
+
+---
+
+[size=18][b]开发心得[/b][/size]
+
+[ABASIC][b]1. AI 写代码 ≠ 不管代码[/b]
+
+项目 80% 的代码是 Claude 写的。但 AI 写的代码需要你来——审查逻辑、统一风格、修边界 bug。AI 是 [i]"写得快"[/i]，你是 [i]"写得对"[/i]。
+[/ABASIC]
+
+[ABASIC][b]2. 版本号省心方案[/b]
+
+SemVer 的 PATCH 号构建时自动 +1，日常完全不碰版本号。新功能完成时手动改一下 MINOR。changelog 从 git log 自动生成。
+[/ABASIC]
+
+[ABASIC][b]3. 单文件 SQLite 真香[/b]
 
 班级场景 50 人以内，SQLite 完全够用。零配置，备份就是一个文件复制。
+[/ABASIC]
 
 ---
 
-## 仓库地址
+[size=18][b]仓库地址[/b][/size]
 
 [cloud type=github title=ClassNet url=https://github.com/Nevino2333/ClassNet]GitHub 仓库[/cloud]
 
 ---
 
-## 后续计划
+[size=18][b]后续计划[/b][/size]
 
-- PWA 支持（离线可用）
-- 移动端适配优化
-- Docker 一键部署
+[list]
+[*]PWA 支持（离线可用）
+[*]移动端适配优化
+[*]Docker 一键部署
+[/list]
 
 ---
 
-**欢迎 Star / Fork / 提 Issue！**
+[center]
+[BSUCCESS][size=16]欢迎 Star / Fork / 提 Issue！[/size][/BSUCCESS]
 
-*如果你们班也需要一个这样的平台，直接 clone 下来改改配置就能跑。*
+[i]如果你们班也需要一个这样的平台，直接 clone 下来改改配置就能跑。[/i]
+[/center]
