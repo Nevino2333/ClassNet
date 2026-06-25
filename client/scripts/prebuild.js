@@ -84,64 +84,14 @@ if (manualMajorMinorChange) {
 }
 
 // ============================================================
-// 生成 Changelog（从 git log 提取）
+// 生成 Changelog（从 git log 提取，不严格分类）
 // ============================================================
 
 var lastBuildTime = data.buildTime || '';
 var gitRange = lastBuildTime ? '--since="' + lastBuildTime + '"' : '--max-count=50';
-var gitLog = exec('git log ' + gitRange + ' --pretty=format:"%s" --no-merges');
+var gitLog = exec('git log ' + gitRange + ' --pretty=format:"- %s" --no-merges');
 
-var features = [];
-var fixes = [];
-var others = [];
-
-if (gitLog) {
-  var lines = gitLog.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
-    if (!line) continue;
-
-    // 匹配 feat: / fix: / refactor: / style: 等前缀
-    var match = line.match(/^(\w+):\s*(.+)/);
-    if (match) {
-      var type = match[1].toLowerCase();
-      var desc = match[2];
-
-      if (type === 'feat') {
-        features.push(desc);
-      } else if (type === 'fix') {
-        fixes.push(desc);
-      } else {
-        others.push(line);
-      }
-    } else {
-      others.push(line);
-    }
-  }
-}
-
-var changelogEntry = '';
-if (features.length > 0) {
-  changelogEntry += '### 新增\n';
-  for (var f = 0; f < features.length; f++) {
-    changelogEntry += '- ' + features[f] + '\n';
-  }
-  changelogEntry += '\n';
-}
-if (fixes.length > 0) {
-  changelogEntry += '### 修复\n';
-  for (var fx = 0; fx < fixes.length; fx++) {
-    changelogEntry += '- ' + fixes[fx] + '\n';
-  }
-  changelogEntry += '\n';
-}
-if (others.length > 0 && others.length < 10) {
-  changelogEntry += '### 其他\n';
-  for (var o = 0; o < others.length; o++) {
-    changelogEntry += '- ' + others[o] + '\n';
-  }
-  changelogEntry += '\n';
-}
+var changelogEntry = gitLog || '*此版本无提交记录*';
 
 var now = new Date();
 var buildTime = now.toISOString();
