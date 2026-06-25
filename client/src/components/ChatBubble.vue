@@ -290,7 +290,7 @@ export default {
       var target = e.target;
       while (target && target !== e.currentTarget) {
         // 处理照片徽章点击（显示图片预览）
-        if (target.classList.contains('photo-badge')) {
+        if (target.classList && target.classList.contains('photo-badge')) {
           e.preventDefault();
           e.stopPropagation();
           var imageUrl = target.getAttribute('data-image-url');
@@ -300,7 +300,7 @@ export default {
           return;
         }
         // 处理图片点击（打开预览）
-        if (target.tagName === 'IMG' && target.classList.contains('msg-image')) {
+        if (target.tagName === 'IMG' && target.classList && target.classList.contains('msg-image')) {
           e.preventDefault();
           e.stopPropagation();
           var imageUrl = target.getAttribute('data-image-url');
@@ -456,11 +456,11 @@ export default {
 
       // 检查是否是照片徽章
       while (target && target !== self.$el) {
-        if (target.classList.contains('photo-badge')) {
+        if (target.classList && target.classList.contains('photo-badge')) {
           self.longPressImageUrl = target.getAttribute('data-image-url');
           break;
         }
-        if (target.tagName === 'IMG' && target.classList.contains('msg-image')) {
+        if (target.tagName === 'IMG' && target.classList && target.classList.contains('msg-image')) {
           self.longPressImageUrl = target.getAttribute('data-image-url');
           break;
         }

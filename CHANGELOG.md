@@ -1,6 +1,11 @@
 # Changelog
 
 ## [1.1.0] - 2026-06-25
+【修复/优化】
+修正 GitHub 仓库链接为 Nevino2333/ClassNet
+
+
+
 
 【新增】
 完整的版本号管理制度（SemVer + 自动递增 + changelog）

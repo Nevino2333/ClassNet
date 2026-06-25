@@ -1375,7 +1375,7 @@ export default {
     // === 图片预览与长按菜单 ===
     onMarkdownClick: function(e) {
       var target = e.target;
-      if (target.tagName === 'IMG' && target.classList.contains('md-image')) {
+      if (target.tagName === 'IMG' && target.classList && target.classList.contains('md-image')) {
         e.preventDefault();
         e.stopPropagation();
         var url = target.getAttribute('data-preview-url') || target.src;
@@ -1389,7 +1389,7 @@ export default {
       // 检测是否触摸在图片上
       var imgEl = null;
       while (target && target !== e.currentTarget) {
-        if (target.tagName === 'IMG' && target.classList.contains('md-image')) {
+        if (target.tagName === 'IMG' && target.classList && target.classList.contains('md-image')) {
           imgEl = target;
           break;
         }
