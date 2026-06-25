@@ -4,6 +4,7 @@ var path = require('path');
 var fs = require('fs');
 var multer = require('multer');
 var auth = require('../middleware/auth');
+var db = require('../utils/db');
 
 // 云盘根目录
 var cloudDir = path.resolve(process.env.RESOURCES_DIR || path.join(__dirname, '../../../Resources'), 'cloud');
@@ -58,6 +59,158 @@ var upload = multer({
       return cb(new Error('不支持的文件类型，仅支持图片/音频/视频'));
     }
     cb(null, true);
+  }
+});
+
+// ============ 上传码（免登录跨浏览器上传）============
+// 码字符集：去掉易混淆字符 0/O/1/I/L
+var CODE_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+var MAX_FAIL_COUNT = 5;
+var LOCK_MINUTES = 5;
+
+function generateCode() {
+  var code = '';
+  for (var i = 0; i < 6; i++) {
+    code += CODE_CHARS.charAt(Math.floor(Math.random() * CODE_CHARS.length));
+  }
+  return code;
+}
+
+// 生成唯一码（防碰撞）
+function generateUniqueCode() {
+  for (var attempt = 0; attempt < 10; attempt++) {
+    var code = generateCode();
+    var existing = db.prepare('SELECT code FROM upload_codes WHERE code = ?').get(code);
+    if (!existing) return code;
+  }
+  return generateCode(); // 兜底
+}
+
+// 验证上传码：返回 { ownerId, error }
+function verifyUploadCode(code) {
+  if (!code || code.length !== 6) {
+    return { ownerId: null, error: '上传码格式不正确' };
+  }
+  var row = db.prepare('SELECT * FROM upload_codes WHERE code = ?').get(code.toUpperCase());
+  if (!row) {
+    return { ownerId: null, error: '上传码无效' };
+  }
+  // 检查锁定
+  if (row.locked_until) {
+    var lockedUntil = new Date(row.locked_until + 'Z').getTime();
+    if (Date.now() < lockedUntil) {
+      var remainMin = Math.ceil((lockedUntil - Date.now()) / 60000);
+      return { ownerId: null, error: '上传码已被锁定，请 ' + remainMin + ' 分钟后再试' };
+    }
+    // 锁定过期，重置
+    db.prepare('UPDATE upload_codes SET fail_count = 0, locked_until = NULL WHERE code = ?').run(row.code);
+  }
+  return { ownerId: row.owner_id, error: null };
+}
+
+// 记录验证失败
+function recordCodeFailure(code) {
+  var row = db.prepare('SELECT * FROM upload_codes WHERE code = ?').get((code || '').toUpperCase());
+  if (!row) return;
+  var newFail = row.fail_count + 1;
+  if (newFail >= MAX_FAIL_COUNT) {
+    var lockedUntil = new Date(Date.now() + LOCK_MINUTES * 60000).toISOString().replace('T', ' ').substring(0, 19);
+    db.prepare('UPDATE upload_codes SET fail_count = ?, locked_until = ? WHERE code = ?').run(newFail, lockedUntil, row.code);
+  } else {
+    db.prepare('UPDATE upload_codes SET fail_count = ? WHERE code = ?').run(newFail, row.code);
+  }
+}
+
+// 验证成功重置失败计数
+function resetCodeFailCount(code) {
+  db.prepare('UPDATE upload_codes SET fail_count = 0, locked_until = NULL WHERE code = ?').run((code || '').toUpperCase());
+}
+
+// 免登录上传的 multer 配置（在 destination 中验证上传码）
+var guestStorage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    var code = (req.body && req.body.code) || '';
+    var result = verifyUploadCode(code);
+    if (!result.ownerId) {
+      recordCodeFailure(code);
+      return cb(new Error(result.error || '上传码无效'));
+    }
+    resetCodeFailCount(code);
+    req.guestOwnerId = result.ownerId;
+    req.guestCode = code.toUpperCase();
+    var photoDir = path.join(getUserDir(result.ownerId), 'photos');
+    if (!fs.existsSync(photoDir)) {
+      fs.mkdirSync(photoDir, { recursive: true });
+    }
+    cb(null, photoDir);
+  },
+  filename: function(req, file, cb) {
+    var ownerId = req.guestOwnerId;
+    var ext = path.extname(file.originalname) || '.bin';
+    var filename = ownerId + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8) + ext;
+    cb(null, filename);
+  }
+});
+var guestUpload = multer({
+  storage: guestStorage,
+  limits: { fileSize: 200 * 1024 * 1024 },
+  fileFilter: function(req, file, cb) {
+    var allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp',
+                   '.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus',
+                   '.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
+    var ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.indexOf(ext) === -1) {
+      return cb(new Error('不支持的文件类型，仅支持图片/音频/视频'));
+    }
+    cb(null, true);
+  }
+});
+
+// 生成/刷新上传码（已登录用户）
+router.post('/upload-code', auth.requireAuth, function(req, res) {
+  var userId = req.user.user_id;
+  var newCode = generateUniqueCode();
+  // 替换该用户的所有旧码（一个用户只保留一个有效码）
+  db.prepare('DELETE FROM upload_codes WHERE owner_id = ?').run(userId);
+  db.prepare('INSERT INTO upload_codes (code, owner_id, fail_count, locked_until) VALUES (?, ?, 0, NULL)').run(newCode, userId);
+  res.json({ code: 200, data: { code: newCode, created_at: new Date().toISOString() } });
+});
+
+// 获取当前上传码（已登录用户，如不存在则自动生成）
+router.get('/upload-code', auth.requireAuth, function(req, res) {
+  var userId = req.user.user_id;
+  var row = db.prepare('SELECT * FROM upload_codes WHERE owner_id = ?').get(userId);
+  if (!row) {
+    var newCode = generateUniqueCode();
+    db.prepare('INSERT INTO upload_codes (code, owner_id, fail_count, locked_until) VALUES (?, ?, 0, NULL)').run(newCode, userId);
+    return res.json({ code: 200, data: { code: newCode, created_at: new Date().toISOString() } });
+  }
+  res.json({ code: 200, data: { code: row.code, created_at: row.created_at } });
+});
+
+// 免登录上传（通过上传码认证）
+router.post('/guest-upload', guestUpload.single('file'), function(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ code: 400, message: '未收到文件' });
+  }
+  res.json({
+    code: 200,
+    data: {
+      name: req.file.filename,
+      size: req.file.size,
+      url: '/api/cloud/files/' + encodeURIComponent(req.file.filename)
+    }
+  });
+});
+
+// 验证上传码（前端检查码是否有效，不记录失败次数）
+router.post('/verify-code', function(req, res) {
+  var code = (req.body && req.body.code) || '';
+  var result = verifyUploadCode(code);
+  if (result.ownerId) {
+    res.json({ code: 200, data: { valid: true } });
+  } else {
+    res.json({ code: 200, data: { valid: false, message: result.error } });
   }
 });
 
@@ -355,8 +508,8 @@ router.use(function(err, req, res, next) {
   if (err.code === 'LIMIT_UNEXPECTED_FILE') {
     return res.status(400).json({ code: 400, message: '意外的文件字段' });
   }
-  if (err.message === '不支持的文件类型') {
-    return res.status(400).json({ code: 400, message: '不支持的文件类型，仅支持 jpg/jpeg/png/gif/webp/bmp' });
+  if (err.message === '不支持的文件类型，仅支持图片/音频/视频') {
+    return res.status(400).json({ code: 400, message: '不支持的文件类型，仅支持图片/音频/视频' });
   }
   // 其他错误
   console.error('[Cloud] 上传错误:', err);
