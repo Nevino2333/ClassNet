@@ -112,43 +112,49 @@
       </div>
     </div>
 
-    <!-- 录像模式 -->
+    <!-- 录像模式 - 全屏相机（未录制时） -->
+    <div v-if="mode === 'video' && mediaRecorderSupported && !videoBlob" class="video-fullscreen">
+      <video ref="videoPreview" autoplay muted playsinline></video>
+      <div class="vf-top-bar">
+        <div v-if="videoRecording" class="vf-rec-badge">
+          <span class="rec-dot"></span>
+          <span>{{ formatTime(recordSeconds) }}</span>
+        </div>
+      </div>
+      <div v-if="!videoRecording && cameraReady && !videoError" class="vf-hint">点击按钮开始录像</div>
+      <div v-else-if="videoRecording && !videoPaused" class="vf-hint">录像中</div>
+      <div v-else-if="videoPaused" class="vf-hint">已暂停</div>
+      <div v-if="videoError" class="vf-error">
+        <i class="fa-solid fa-video-slash"></i>
+        <p>{{ videoError }}</p>
+        <button class="vf-error-btn" @click="startCamera">重试</button>
+      </div>
+      <div class="vf-bottom-bar">
+        <div class="vf-side-slot">
+          <button v-if="!videoRecording && cameraReady" class="vf-side-btn" @click="switchCamera">
+            <i class="fa-solid fa-camera-rotate"></i>
+            <span>翻转</span>
+          </button>
+        </div>
+        <button class="vf-record-btn" :class="{ recording: videoRecording }" @click="toggleVideoRecord">
+          <span class="vf-btn-inner"></span>
+        </button>
+        <div class="vf-side-slot">
+          <button v-if="videoRecording" class="vf-side-btn" @click="toggleVideoPause">
+            <i :class="videoPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
+            <span>{{ videoPaused ? '继续' : '暂停' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 录像模式 - 预览/不支持 -->
     <div v-if="mode === 'video'" class="mode-content">
       <div v-if="!mediaRecorderSupported" class="not-supported">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <p>当前浏览器不支持录像功能</p>
       </div>
-      <div v-else-if="!videoBlob" class="video-area">
-        <div class="video-container">
-          <video ref="videoPreview" autoplay muted playsinline></video>
-          <div v-if="videoRecording" class="video-recording-badge">
-            <span class="rec-dot"></span>
-            <span>{{ formatTime(recordSeconds) }}</span>
-          </div>
-          <div v-if="videoError" class="video-error-overlay">
-            <i class="fa-solid fa-video-slash"></i>
-            <p>{{ videoError }}</p>
-            <button @click="startCamera">重试</button>
-          </div>
-        </div>
-        <div class="video-controls">
-          <button v-if="!videoRecording" class="video-ctrl-btn" @click="switchCamera" :disabled="!cameraReady">
-            <i class="fa-solid fa-camera-rotate"></i>
-            <span>切换</span>
-          </button>
-          <button class="record-btn video-record-btn" :class="{ recording: videoRecording }" @click="toggleVideoRecord">
-            <i :class="videoRecording ? 'fa-solid fa-stop' : 'fa-solid fa-circle'"></i>
-          </button>
-          <button v-if="videoRecording" class="video-ctrl-btn" @click="toggleVideoPause">
-            <i :class="videoPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
-            <span>{{ videoPaused ? '继续' : '暂停' }}</span>
-          </button>
-        </div>
-        <p class="record-hint" v-if="!videoRecording && cameraReady">点击按钮开始录像</p>
-        <p class="record-hint" v-else-if="videoRecording && !videoPaused">录像中...</p>
-        <p class="record-hint" v-else-if="videoPaused">已暂停</p>
-      </div>
-      <div v-else class="record-preview">
+      <div v-if="videoBlob" class="record-preview">
         <div class="preview-label">
           <i class="fa-solid fa-film"></i>
           <span>录像完成</span>
@@ -1033,37 +1039,39 @@ export default {
   margin: 0;
 }
 
-/* 录像区 */
-.video-container {
-  position: relative;
-  width: 100%;
-  max-width: 480px;
-  padding-top: 75%; /* 4:3 比例，Chrome 80 不支持 aspect-ratio */
+/* 全屏相机录像 */
+.video-fullscreen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 100;
   background: #000;
-  border-radius: var(--radius-lg, 16px);
   overflow: hidden;
 }
-.video-container video {
-  position: absolute;
-  top: 0;
-  left: 0;
+.video-fullscreen video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.video-recording-badge {
+.vf-top-bar {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 0; left: 0; right: 0;
+  padding: 20px 16px 40px;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
+  z-index: 2;
+}
+.vf-rec-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: var(--radius-sm, 8px);
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 20px;
   color: #fff;
-  font-size: var(--font-size-sm, 13px);
+  font-size: 15px;
   font-family: 'SF Mono', 'Menlo', monospace;
+  font-weight: 600;
 }
 .rec-dot {
   width: 8px;
@@ -1076,53 +1084,102 @@ export default {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
-.video-error-overlay {
+.vf-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,0.85);
+  font-size: 16px;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+}
+.vf-error {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
+  background: rgba(0,0,0,0.88);
   color: #fff;
-  background: rgba(0,0,0,0.8);
+  z-index: 3;
 }
-.video-error-overlay i { font-size: 48px; }
-.video-error-overlay p { margin: 0; font-size: var(--font-size-sm, 14px); text-align: center; padding: 0 20px; }
-.video-error-overlay button {
-  padding: 8px 20px;
+.vf-error i { font-size: 56px; }
+.vf-error p { margin: 0; font-size: 15px; text-align: center; padding: 0 24px; }
+.vf-error-btn {
+  padding: 10px 32px;
   background: var(--primary-color, #007aff);
   color: #fff;
   border: none;
-  border-radius: var(--radius-md, 12px);
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
 }
-
-/* 视频控制 */
-.video-controls {
+.vf-error-btn:active { transform: scale(0.92); opacity: 0.7; }
+.vf-bottom-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 20px 32px 40px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  justify-content: space-between;
+  background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+  z-index: 2;
 }
-.video-ctrl-btn {
+.vf-side-slot {
+  width: 80px;
+  display: flex;
+  justify-content: center;
+}
+.vf-side-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 12px;
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--separator-color, #e5e5ea);
-  border-radius: var(--radius-md, 12px);
-  color: var(--text-primary, #000);
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 12px;
   cursor: pointer;
-  min-width: 60px;
-  min-height: 60px;
-  justify-content: center;
+  padding: 8px;
 }
-.video-ctrl-btn i { font-size: 20px; }
-.video-ctrl-btn span { font-size: var(--font-size-caption2, 11px); }
-.video-ctrl-btn:active { transform: scale(0.92); opacity: 0.7; }
-.video-ctrl-btn:disabled { opacity: 0.5; }
+.vf-side-btn i { font-size: 24px; }
+.vf-side-btn:active { opacity: 0.6; }
+.vf-record-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: transparent;
+  border: 4px solid #fff;
+  padding: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s var(--ease-standard, ease);
+  flex-shrink: 0;
+}
+.vf-btn-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  transition: all 0.3s var(--ease-standard, ease);
+}
+.vf-record-btn.recording {
+  border-color: #ff3b30;
+}
+.vf-record-btn.recording .vf-btn-inner {
+  border-radius: 4px;
+  background: #ff3b30;
+  transform: scale(0.45);
+}
+.vf-record-btn:active { transform: scale(0.92); }
 
 /* 预览 */
 .record-preview {
