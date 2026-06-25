@@ -268,7 +268,7 @@
     <transition name="fade">
       <div v-if="showImagePreview" class="image-preview-overlay" @click="closeImagePreview">
         <div class="image-preview-content" @click.stop>
-          <img :src="imagePreviewUrl" class="preview-image" />
+          <img :src="imagePreviewUrl" class="preview-image" @contextmenu.prevent />
           <button class="preview-close-btn" @click="closeImagePreview">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -4720,6 +4720,10 @@ export default {
   max-height: 90vh;
   border-radius: var(--radius-lg);
   object-fit: contain;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .preview-close-btn {

@@ -544,6 +544,10 @@ export default {
   display: flex;
   flex-direction: column;
   position: relative;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .chat-bubble.own-bubble {
