@@ -64,7 +64,7 @@
             <h3 class="quick-title">快捷上传</h3>
             <p class="quick-desc">请输入已登录用户云盘页显示的上传码</p>
           </div>
-          <div class="quick-form" @submit.prevent="verifyCode">
+          <form class="quick-form" @submit.prevent="verifyCode">
             <div class="quick-input-wrap">
               <input
                 v-model="quickCode"
@@ -84,7 +84,7 @@
               <span v-if="quickLoading" class="btn-loading"></span>
               <span v-else>验证并上传</span>
             </button>
-          </div>
+          </form>
         </div>
       </div>
     </transition>

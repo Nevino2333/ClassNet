@@ -99,10 +99,12 @@
           <div class="record-timer" :class="{ recording: audioRecording, paused: audioPaused }">
             {{ formatTime(recordSeconds) }}
           </div>
-          <div class="record-pulse" :class="{ active: audioRecording && !audioPaused }"></div>
-          <button class="record-btn" :class="{ recording: audioRecording }" @click="toggleAudioRecord">
-            <i :class="audioRecording ? 'fa-solid fa-stop' : 'fa-solid fa-microphone'"></i>
-          </button>
+          <div class="record-pulse-wrap">
+            <div class="record-pulse" :class="{ active: audioRecording && !audioPaused }"></div>
+            <button class="record-btn" :class="{ recording: audioRecording }" @click="toggleAudioRecord">
+              <i :class="audioRecording ? 'fa-solid fa-stop' : 'fa-solid fa-microphone'"></i>
+            </button>
+          </div>
           <button v-if="audioRecording" class="pause-btn" @click="toggleAudioPause">
             <i :class="audioPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
             <span>{{ audioPaused ? '继续' : '暂停' }}</span>
@@ -387,6 +389,21 @@ export default {
       });
     },
     changeCode: function() {
+      // 清理录音录像资源，避免摄像头/麦克风泄漏（不重启摄像头，因为要切回输入码界面）
+      this.cleanupAudio();
+      this.cleanupVideo();
+      if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
+      if (this.videoUrl) URL.revokeObjectURL(this.videoUrl);
+      this.audioBlob = null;
+      this.audioUrl = '';
+      this.audioChunks = [];
+      this.videoBlob = null;
+      this.videoUrl = '';
+      this.videoChunks = [];
+      this.recordSeconds = 0;
+      this.stopTimer();
+      // 重置为文件模式，避免重新输入码后摄像头状态混乱
+      this.mode = 'file';
       this.uploadCode = '';
       this.manualCode = '';
       this.manualError = '';
@@ -399,8 +416,12 @@ export default {
       if (this.mode === 'audio') this.cleanupAudio();
       if (this.mode === 'video') this.cleanupVideo();
       this.mode = m;
+      // 等待 DOM 渲染完成（videoPreview ref 才存在）再启动摄像头
       if (m === 'video' && !this.videoBlob) {
-        this.startCamera();
+        var self = this;
+        this.$nextTick(function() {
+          self.startCamera();
+        });
       }
     },
 
@@ -466,6 +487,10 @@ export default {
       var self = this;
       if (!isMediaRecorderSupported()) {
         self.showToast('浏览器不支持录音', 'error');
+        return;
+      }
+      if (!window.isSecureContext) {
+        self.showToast('录音需要 HTTPS 安全环境', 'error');
         return;
       }
       navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
@@ -573,6 +598,10 @@ export default {
         self.videoError = '浏览器不支持录像';
         return;
       }
+      if (!window.isSecureContext) {
+        self.videoError = '录像需要 HTTPS 安全环境';
+        return;
+      }
       var constraints = {
         video: { facingMode: self.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true
@@ -665,8 +694,11 @@ export default {
       this.videoUrl = '';
       this.videoChunks = [];
       this.recordSeconds = 0;
-      // 重新启动摄像头
-      this.startCamera();
+      // 等待 DOM 渲染回 video-area（videoPreview ref 恢复）再启动摄像头
+      var self = this;
+      this.$nextTick(function() {
+        self.startCamera();
+      });
     },
     cleanupVideoStream: function() {
       if (this.videoStream) {
@@ -1079,6 +1111,12 @@ export default {
 .record-timer.paused { color: var(--warning-color, #ff9500); }
 
 /* 录音脉冲 */
+.record-pulse-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .record-pulse {
   width: 80px;
   height: 80px;
@@ -1155,12 +1193,15 @@ export default {
   position: relative;
   width: 100%;
   max-width: 480px;
-  aspect-ratio: 4 / 3;
+  padding-top: 75%; /* 4:3 比例，Chrome 80 不支持 aspect-ratio */
   background: #000;
   border-radius: var(--radius-lg, 16px);
   overflow: hidden;
 }
 .video-container video {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

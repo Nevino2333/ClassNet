@@ -335,8 +335,12 @@ export default {
       if (this.mode === 'video') this.cleanupVideo();
       this.mode = m;
       this.uploaded = false;
+      // 等待 DOM 渲染完成（videoPreview ref 才存在）再启动摄像头
       if (m === 'video' && !this.videoBlob) {
-        this.startCamera();
+        var self = this;
+        this.$nextTick(function() {
+          self.startCamera();
+        });
       }
     },
 
@@ -421,6 +425,10 @@ export default {
       var self = this;
       if (!isMediaRecorderSupported()) {
         self.showToast('浏览器不支持录音', 'error');
+        return;
+      }
+      if (!window.isSecureContext) {
+        self.showToast('录音需要 HTTPS 安全环境', 'error');
         return;
       }
       navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
@@ -527,6 +535,10 @@ export default {
         self.videoError = '浏览器不支持录像';
         return;
       }
+      if (!window.isSecureContext) {
+        self.videoError = '录像需要 HTTPS 安全环境';
+        return;
+      }
       var constraints = {
         video: { facingMode: self.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true
@@ -617,7 +629,11 @@ export default {
       this.videoUrl = '';
       this.videoChunks = [];
       this.recordSeconds = 0;
-      this.startCamera();
+      // 等待 DOM 渲染回 video-area（videoPreview ref 恢复）再启动摄像头
+      var self = this;
+      this.$nextTick(function() {
+        self.startCamera();
+      });
     },
     cleanupVideoStream: function() {
       if (this.videoStream) {
@@ -1022,12 +1038,15 @@ export default {
   position: relative;
   width: 100%;
   max-width: 480px;
-  aspect-ratio: 4 / 3;
+  padding-top: 75%; /* 4:3 比例，Chrome 80 不支持 aspect-ratio */
   background: #000;
   border-radius: var(--radius-lg, 16px);
   overflow: hidden;
 }
 .video-container video {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
