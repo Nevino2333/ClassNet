@@ -48,12 +48,14 @@ var storage = multer.diskStorage({
 });
 var upload = multer({
   storage: storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB，支持录像
   fileFilter: function(req, file, cb) {
-    var allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+    var allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp',
+                   '.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus',
+                   '.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
     var ext = path.extname(file.originalname).toLowerCase();
     if (allowed.indexOf(ext) === -1) {
-      return cb(new Error('不支持的文件类型'));
+      return cb(new Error('不支持的文件类型，仅支持图片/音频/视频'));
     }
     cb(null, true);
   }

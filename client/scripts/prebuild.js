@@ -101,7 +101,7 @@ var dateStr = now.getFullYear() + '-' +
   String(now.getDate()).padStart(2, '0');
 
 // ============================================================
-// 写入 CHANGELOG.md
+// 写入 CHANGELOG.md（幂等：同版本不重复）
 // ============================================================
 
 var existingChangelog = '';
@@ -111,9 +111,14 @@ if (fs.existsSync(CHANGELOG_FILE)) {
   existingChangelog = existingChangelog.replace(/^# Changelog\s*\n+/i, '');
 }
 
+var versionHeader = '## [' + newVersion + '] - ' + dateStr;
+// 如果该版本已存在于 changelog 中，移除旧条目（避免重复）
+var versionRegex = new RegExp('## \\[' + newVersion.replace(/\./g, '\\.') + '\\][^\\n]*\\n(?:[-*].*\\n)*', 'g');
+existingChangelog = existingChangelog.replace(versionRegex, '');
+
 var newChangelogContent = '# Changelog\n\n' +
-  '## [' + newVersion + '] - ' + dateStr + '\n' +
-  (changelogEntry || '*此版本无提交记录*\n\n') +
+  versionHeader + '\n' +
+  (changelogEntry || '*此版本无提交记录*') + '\n\n' +
   existingChangelog;
 
 fs.writeFileSync(CHANGELOG_FILE, newChangelogContent, 'utf8');
