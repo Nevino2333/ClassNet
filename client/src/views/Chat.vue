@@ -254,9 +254,6 @@
           <button v-if="contextMenuImageUrl" class="ctx-item" @click="handleContextAction('saveImage')">
             <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
           </button>
-          <button v-if="contextMenuImageUrl" class="ctx-item" @click="handleContextAction('previewImage')">
-            <i class="fa-solid fa-image"></i> 查看图片
-          </button>
           <button v-if="contextMenuTarget && isOwnMessage(contextMenuTarget)" class="ctx-item ctx-item-danger" @click="handleContextAction('delete')">
             <i class="fa-solid fa-trash"></i> 删除
           </button>
@@ -265,16 +262,7 @@
     </transition>
 
     <!-- Image Preview -->
-    <transition name="fade">
-      <div v-if="showImagePreview" class="image-preview-overlay" @click="closeImagePreview">
-        <div class="image-preview-content" @click.stop>
-          <img :src="imagePreviewUrl" class="preview-image" @contextmenu.prevent />
-          <button class="preview-close-btn" @click="closeImagePreview">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      </div>
-    </transition>
+    <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" @close="closeImagePreview" />
 
     <!-- Reaction Picker -->
     <transition name="fade-quick">
@@ -651,6 +639,7 @@ import ChatBubble from '@/components/ChatBubble.vue';
 import EmojiPicker from '@/components/EmojiPicker.vue';
 import AppNavBar from '@/components/AppNavBar.vue';
 import CloudImagePicker from '@/components/CloudImagePicker.vue';
+import ImagePreview from '@/components/ImagePreview.vue';
 import helpers from '@/utils/helpers';
 import wsManager from '@/utils/websocket';
 import { autoConnect } from '@/utils/websocket';
@@ -662,7 +651,8 @@ export default {
     ChatBubble: ChatBubble,
     EmojiPicker: EmojiPicker,
     AppNavBar: AppNavBar,
-    CloudImagePicker: CloudImagePicker
+    CloudImagePicker: CloudImagePicker,
+    ImagePreview: ImagePreview
   },
   data: function() {
     return {
@@ -2716,11 +2706,6 @@ export default {
         self.saveImageToCloud(imageUrl);
         return;
       }
-      if (action === 'previewImage') {
-        self.closeContextMenu();
-        self.previewImage(imageUrl);
-        return;
-      }
 
       self.closeContextMenu();
 
@@ -4693,56 +4678,5 @@ export default {
   .settings-panel-sm { width: 260px; }
   .settings-header { padding: 14px 18px; }
   .settings-body { padding: 12px 18px; }
-}
-
-/* Image Preview */
-.image-preview-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.image-preview-content {
-  position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 90vh;
-  border-radius: var(--radius-lg);
-  object-fit: contain;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-  pointer-events: none;
-}
-
-.preview-close-btn {
-  position: absolute;
-  top: -40px;
-  right: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.preview-close-btn:active {
-  background: rgba(255, 255, 255, 0.3);
 }
 </style>

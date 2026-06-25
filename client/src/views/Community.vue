@@ -527,7 +527,7 @@
             <button v-if="!hasVoted(currentPost)" class="btn-primary poll-submit-btn" @click="submitSurveyVote(currentPost)">提交问卷</button>
           </div>
           <div v-if="currentPost.title && currentPost.type === 'forum'" class="full-detail-title">{{ currentPost.title }}</div>
-          <div v-if="currentPost.type !== 'poll' && currentPost.type !== 'survey'" class="full-detail-content markdown-body" v-html="renderMarkdown(currentPost.content)"></div>
+          <div v-if="currentPost.type !== 'poll' && currentPost.type !== 'survey'" class="full-detail-content markdown-body" v-html="renderMarkdown(currentPost.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart"></div>
           <div v-if="getPlaylistShare(currentPost)" class="playlist-share-card" @click="openPlaylistFromPost(currentPost)">
             <div class="playlist-share-icon"><i class="fa-solid fa-music"></i></div>
             <div class="playlist-share-info">
@@ -580,7 +580,7 @@
                   <span class="comment-author">{{ comment.net_name || '未知用户' }}</span>
                   <span class="comment-time">{{ formatTime(comment.created_at) }}</span>
                 </div>
-                <div class="comment-text markdown-body" v-html="renderMarkdown(comment.content)"></div>
+                <div class="comment-text markdown-body" v-html="renderMarkdown(comment.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart"></div>
                 <div class="comment-actions">
                   <button class="comment-action-btn" @click="likeComment(comment)">
                     <i :class="comment.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"></i>
@@ -611,7 +611,7 @@
                         <span v-if="reply.parent_author" class="reply-to">@{{ reply.parent_author }}</span>
                         <span class="comment-time">{{ formatTime(reply.created_at) }}</span>
                       </div>
-                      <div class="comment-text markdown-body" v-html="renderMarkdown(reply.content)"></div>
+                      <div class="comment-text markdown-body" v-html="renderMarkdown(reply.content)" @click="onMarkdownClick" @touchstart="onMarkdownTouchStart"></div>
                       <div class="comment-actions">
                         <button class="comment-action-btn" @click="likeComment(reply)">
                           <i :class="reply.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"></i>
@@ -1044,6 +1044,23 @@
       @select="onCloudImageSelect"
       @close="showCloudPicker = false"
     />
+
+    <!-- Image Preview -->
+    <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" @close="closeImagePreview" />
+
+    <!-- Image long-press menu -->
+    <transition name="fade-quick">
+      <div v-if="showImageMenu" class="image-menu-overlay" @click="closeImageMenu">
+        <div class="image-menu-popup" :style="{ top: imageMenuPos.y + 'px', left: imageMenuPos.x + 'px' }" @click.stop>
+          <button class="ctx-item" @click="previewImageFromMenu">
+            <i class="fa-solid fa-image"></i> 查看图片
+          </button>
+          <button v-if="canSaveMenuImage" class="ctx-item" @click="saveMenuImageToCloud">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
+          </button>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1053,6 +1070,7 @@ import UserAvatar from '@/components/UserAvatar.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue';
 import CloudImagePicker from '@/components/CloudImagePicker.vue';
+import ImagePreview from '@/components/ImagePreview.vue';
 import api from '@/utils/api';
 import helpers from '@/utils/helpers';
 import wsManager from '@/utils/websocket';
@@ -1104,6 +1122,14 @@ customRenderer.tablecell = function(content, flags) {
   var align = flags.align ? ' style="text-align:' + flags.align + '"' : '';
   return '<' + tag + align + '>' + content + '</' + tag + '>';
 };
+// 自定义图片渲染：添加 class 和 data 属性以支持点击预览/长按转存
+customRenderer.image = function(href, title, text) {
+  var url = href || '';
+  var alt = text || '图片';
+  var safeUrl = url.replace(/"/g, '&quot;');
+  var safeAlt = alt.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return '<img class="md-image" data-preview-url="' + safeUrl + '" src="' + safeUrl + '" alt="' + safeAlt + '" loading="lazy" />';
+};
 
 marked.setOptions({
   renderer: customRenderer,
@@ -1116,7 +1142,7 @@ marked.setOptions({
 
 export default {
   name: 'Community',
-  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker },
+  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker, ImagePreview: ImagePreview },
   data: function() {
     return {
       tabs: [
@@ -1141,6 +1167,14 @@ export default {
       showPostPreview: false,
       showEmojiPicker: false,
       showCloudPicker: false,
+      // 图片预览
+      showImagePreview: false,
+      imagePreviewUrl: '',
+      // 图片长按菜单
+      showImageMenu: false,
+      imageMenuPos: { x: 0, y: 0 },
+      imageMenuUrl: '',
+      mdLongPressTimer: null,
       newPost: { content: '', title: '', groupIds: [], isAnonymous: false, type: 'forum', tags: [], foodForm: { dish_name: '', canteen: '', window: '' }, hotForm: { title: '', location: '' }, pollForm: { title: '', options: ['', ''], allowMultiple: false, maxChoices: 1 }, surveyForm: { title: '', questions: [{ question: '', type: 'text', options: [] }] } },
       showCreateFood: false,
       foodForm: { dish_name: '', canteen: '', window: '', reason: '' },
@@ -1186,6 +1220,11 @@ export default {
   computed: {
     currentUser: function() {
       return this.$store.state.auth.user;
+    },
+    // 当前长按菜单的图片是否可转存到云盘（仅本站图片）
+    canSaveMenuImage: function() {
+      var url = this.imageMenuUrl || '';
+      return url.indexOf('/api/cloud/files/') === 0 || url.indexOf('/resources/') === 0 || url.indexOf('/api/photos/') === 0;
     },
     canViewAnonymous: function() {
       var user = this.$store.state.auth.user;
@@ -1333,6 +1372,81 @@ export default {
   },
   beforeDestroy: function() { this.cleanupWSListeners(); },
   methods: {
+    // === 图片预览与长按菜单 ===
+    onMarkdownClick: function(e) {
+      var target = e.target;
+      if (target.tagName === 'IMG' && target.classList.contains('md-image')) {
+        e.preventDefault();
+        e.stopPropagation();
+        var url = target.getAttribute('data-preview-url') || target.src;
+        this.previewImage(url);
+      }
+    },
+    onMarkdownTouchStart: function(e) {
+      var self = this;
+      var touch = e.touches[0];
+      var target = document.elementFromPoint(touch.clientX, touch.clientY);
+      // 检测是否触摸在图片上
+      var imgEl = null;
+      while (target && target !== e.currentTarget) {
+        if (target.tagName === 'IMG' && target.classList.contains('md-image')) {
+          imgEl = target;
+          break;
+        }
+        target = target.parentNode;
+      }
+      if (!imgEl) return;
+      var url = imgEl.getAttribute('data-preview-url') || imgEl.src;
+      if (self.mdLongPressTimer) {
+        clearTimeout(self.mdLongPressTimer);
+        self.mdLongPressTimer = null;
+      }
+      self.mdLongPressTimer = setTimeout(function() {
+        // 长按：显示图片菜单
+        var x = touch.clientX;
+        var y = touch.clientY;
+        var menuWidth = 160;
+        var menuHeight = 120;
+        if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
+        if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 8;
+        self.imageMenuUrl = url;
+        self.imageMenuPos = { x: x, y: y };
+        self.showImageMenu = true;
+      }, 600);
+    },
+    previewImage: function(url) {
+      this.imagePreviewUrl = url;
+      this.showImagePreview = true;
+    },
+    closeImagePreview: function() {
+      this.showImagePreview = false;
+      this.imagePreviewUrl = '';
+    },
+    previewImageFromMenu: function() {
+      var url = this.imageMenuUrl;
+      this.closeImageMenu();
+      this.previewImage(url);
+    },
+    closeImageMenu: function() {
+      this.showImageMenu = false;
+      this.imageMenuUrl = '';
+    },
+    saveMenuImageToCloud: function() {
+      var self = this;
+      var url = this.imageMenuUrl;
+      if (!url) return;
+      self.closeImageMenu();
+      api.post('/cloud/save-from-url', { url: url }).then(function(res) {
+        if (res.data.code === 200) {
+          self.$store.commit('toast/SHOW_TOAST', { message: '图片已转存到云盘', type: 'success' });
+        } else {
+          self.$store.commit('toast/SHOW_TOAST', { message: res.data.message || '转存失败', type: 'error' });
+        }
+      }).catch(function(err) {
+        console.error('转存图片失败:', err);
+        self.$store.commit('toast/SHOW_TOAST', { message: '转存失败，请重试', type: 'error' });
+      });
+    },
     setupWSListeners: function() {
       var self = this;
       self._wsCommunityHandler = function(data) {
@@ -3121,5 +3235,69 @@ export default {
 .markdown-body >>> .task-list-item {
   list-style: none;
   margin-left: -20px;
+}
+
+/* 论坛图片：可点击预览/长按转存 */
+.markdown-body >>> .md-image {
+  max-width: 100%;
+  max-height: 360px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+.markdown-body >>> .md-image:active {
+  opacity: 0.85;
+}
+
+/* 图片长按菜单 */
+.image-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+}
+
+.image-menu-popup {
+  position: absolute;
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  border: 0.5px solid var(--separator-color, rgba(0, 0, 0, 0.1));
+  padding: 4px;
+  min-width: 150px;
+  overflow: hidden;
+}
+
+.image-menu-popup .ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font-size: var(--font-size-body, 16px);
+  color: var(--text-primary, #000);
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.image-menu-popup .ctx-item:active {
+  background: var(--bg-color, #f5f5f7);
+}
+
+.image-menu-popup .ctx-item i {
+  width: 18px;
+  text-align: center;
+  color: var(--text-secondary, #8e8e93);
 }
 </style>

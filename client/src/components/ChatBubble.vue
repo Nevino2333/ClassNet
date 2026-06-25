@@ -299,9 +299,14 @@ export default {
           }
           return;
         }
-        // 处理图片点击（阻止默认行为）
+        // 处理图片点击（打开预览）
         if (target.tagName === 'IMG' && target.classList.contains('msg-image')) {
           e.preventDefault();
+          e.stopPropagation();
+          var imageUrl = target.getAttribute('data-image-url');
+          if (imageUrl) {
+            this.$emit('preview-image', imageUrl);
+          }
           return;
         }
         // 处理链接点击
@@ -410,7 +415,7 @@ export default {
         var regex = new RegExp('(' + escaped + ')', 'gi');
         html = html.replace(regex, '<mark class="search-highlight">$1</mark>');
       }
-      // Step 5: Restore image URLs as photo badges (clickable)
+      // Step 5: Restore image URLs as inline images (click to preview, long-press for menu)
       for (var i = 0; i < imageUrls.length; i++) {
         var placeholder = '%%IMG' + i + '%%';
         var imgUrl = imageUrls[i];
@@ -419,8 +424,8 @@ export default {
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
-        var badgeHtml = '<span class="photo-badge" data-image-url="' + escapedUrl + '"><i class="fa-solid fa-image"></i> [照片]</span>';
-        html = html.replace(placeholder, badgeHtml);
+        var imgHtml = '<img class="msg-image" data-image-url="' + escapedUrl + '" src="' + escapedUrl + '" alt="图片" loading="lazy" />';
+        html = html.replace(placeholder, imgHtml);
       }
       // Step 6: Restore other URLs as clickable links
       for (var i = 0; i < urls.length; i++) {
@@ -987,28 +992,20 @@ export default {
   background: var(--bg-color);
 }
 
-.photo-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--glass-bg);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-secondary);
+.msg-image {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform 0.15s, opacity 0.15s;
+  -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
 }
 
-.photo-badge:active {
-  transform: scale(0.92);
-  opacity: 0.7;
-}
-
-.photo-badge i {
-  font-size: 12px;
-  opacity: 0.7;
+.msg-image:active {
+  opacity: 0.85;
 }
 </style>
