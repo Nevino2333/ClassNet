@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1] - 2026-06-25
+【修复/优化】
+修复聊天页classList.contains对SVG元素报undefined——添加classList存在性检查
+
+
+
 ## [1.1.0] - 2026-06-25
 【修复/优化】
 修正 GitHub 仓库链接为 Nevino2333/ClassNet

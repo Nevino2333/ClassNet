@@ -458,30 +458,63 @@ router.post('/save-from-url', auth.requireAuth, function(req, res) {
     return res.status(400).json({ code: 400, message: '仅支持转存本站图片' });
   }
 
-  // 构建完整的文件路径
+  // 查找源文件路径
   var filePath;
   if (imageUrl.indexOf('/api/cloud/files/') === 0) {
-    // 云盘图片：需要从其他用户的云盘获取（这里简化处理，只支持自己的云盘）
+    // 云盘图片：可能来自任意用户，遍历查找
     var filename = decodeURIComponent(imageUrl.replace('/api/cloud/files/', ''));
-    filePath = path.join(getUserDir(userId), 'photos', filename);
+    // 安全检查
+    if (filename.indexOf('..') !== -1 || filename.indexOf('/') !== -1 || filename.indexOf('\\') !== -1) {
+      return res.status(400).json({ code: 400, message: '无效的文件名' });
+    }
+    // 新格式：userId_timestamp_random.ext → 从该用户目录查找
+    var parts = filename.split('_');
+    if (parts.length >= 3) {
+      var ownerId = parts[0];
+      var candidatePath = path.join(getUserDir(ownerId), 'photos', filename);
+      if (fs.existsSync(candidatePath)) {
+        filePath = candidatePath;
+      }
+    }
+    // 旧格式或无主文件：遍历所有用户云盘
+    if (!filePath) {
+      try {
+        if (fs.existsSync(cloudDir)) {
+          var users = fs.readdirSync(cloudDir);
+          for (var u = 0; u < users.length; u++) {
+            var candidatePath = path.join(cloudDir, users[u], 'photos', filename);
+            if (fs.existsSync(candidatePath)) {
+              filePath = candidatePath;
+              break;
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    if (!filePath) {
+      return res.status(404).json({ code: 404, message: '图片不存在' });
+    }
   } else if (imageUrl.indexOf('/resources/') === 0) {
     // Resources 目录下的图片
     var resourcesDir = path.resolve(process.env.RESOURCES_DIR || path.join(__dirname, '../../../Resources'));
     filePath = path.join(resourcesDir, imageUrl.replace('/resources/', ''));
+    // 安全检查
+    if (filePath.indexOf('..') !== -1) {
+      return res.status(400).json({ code: 400, message: '无效的图片路径' });
+    }
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ code: 404, message: '图片不存在' });
+    }
   } else if (imageUrl.indexOf('/api/photos/') === 0) {
     // Photos API 的图片
     var resourcesDir = path.resolve(process.env.RESOURCES_DIR || path.join(__dirname, '../../../Resources'));
     filePath = path.join(resourcesDir, 'public', 'photos', imageUrl.replace('/api/photos/', ''));
-  }
-
-  // 安全检查：防止路径遍历
-  if (filePath.indexOf('..') !== -1) {
-    return res.status(400).json({ code: 400, message: '无效的图片路径' });
-  }
-
-  // 检查文件是否存在
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ code: 404, message: '图片不存在' });
+    if (filePath.indexOf('..') !== -1) {
+      return res.status(400).json({ code: 400, message: '无效的图片路径' });
+    }
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ code: 404, message: '图片不存在' });
+    }
   }
 
   // 确保用户云盘目录存在

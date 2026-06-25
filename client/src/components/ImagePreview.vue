@@ -93,7 +93,7 @@ export default {
             this.x = 0;
             this.y = 0;
           } else {
-            this.scale = 2;
+            this.scale = 3;
           }
           this.lastTapTime = 0;
           return;
@@ -112,7 +112,7 @@ export default {
         e.preventDefault();
         var dist = this.getTouchDist(e.touches);
         var newScale = this.pinchStartScale * (dist / this.pinchStartDist);
-        this.scale = Math.max(1, Math.min(5, newScale));
+        this.scale = Math.max(1, Math.min(8, newScale));
         if (this.scale === 1) {
           this.x = 0;
           this.y = 0;
@@ -135,7 +135,7 @@ export default {
       e.preventDefault();
       var delta = e.deltaY > 0 ? -0.15 : 0.15;
       var newScale = this.scale + delta;
-      this.scale = Math.max(1, Math.min(5, newScale));
+      this.scale = Math.max(1, Math.min(8, newScale));
       if (this.scale === 1) {
         this.x = 0;
         this.y = 0;
