@@ -84,14 +84,69 @@ if (manualMajorMinorChange) {
 }
 
 // ============================================================
-// 生成 Changelog（从 git log 提取，不严格分类）
+// 生成 Changelog（从 git log 提取，分类展示）
 // ============================================================
 
 var lastBuildTime = data.buildTime || '';
 var gitRange = lastBuildTime ? '--since="' + lastBuildTime + '"' : '--max-count=50';
-var gitLog = exec('git log ' + gitRange + ' --pretty=format:"- %s" --no-merges');
+var gitLog = exec('git log ' + gitRange + ' --pretty=format:"%s" --no-merges');
 
-var changelogEntry = gitLog || '*此版本无提交记录*';
+// 解析并分类提交，过滤无意义的 savepoint
+var features = [];
+var fixes = [];
+var others = [];
+
+if (gitLog) {
+  var lines = gitLog.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    // 跳过备份点
+    if (line.indexOf('savepoint') !== -1 || line.indexOf('💾') !== -1) continue;
+    // 跳过 chore/docs 类
+    if (/^(chore|docs):/.test(line)) continue;
+
+    // 分类
+    if (/^feat:/.test(line)) {
+      features.push(line.replace(/^feat:\s*/, ''));
+    } else if (/^fix:/.test(line)) {
+      fixes.push(line.replace(/^fix:\s*/, ''));
+    } else if (/^refactor:/.test(line)) {
+      fixes.push(line.replace(/^refactor:\s*/, ''));
+    } else if (/^style:/.test(line)) {
+      features.push(line.replace(/^style:\s*/, ''));
+    } else {
+      // 非规范格式但可能是重要提交，放其他
+      others.push(line);
+    }
+  }
+}
+
+var changelogEntry = '';
+if (features.length > 0) {
+  changelogEntry += '【新增】\n';
+  for (var f = 0; f < features.length; f++) {
+    changelogEntry += features[f] + '\n';
+  }
+  changelogEntry += '\n';
+}
+if (fixes.length > 0) {
+  changelogEntry += '【修复/优化】\n';
+  for (var fx = 0; fx < fixes.length; fx++) {
+    changelogEntry += fixes[fx] + '\n';
+  }
+  changelogEntry += '\n';
+}
+if (others.length > 0) {
+  changelogEntry += '【其他】\n';
+  for (var o = 0; o < others.length; o++) {
+    changelogEntry += others[o] + '\n';
+  }
+  changelogEntry += '\n';
+}
+if (!changelogEntry) {
+  changelogEntry = '版本更新';
+}
 
 var now = new Date();
 var buildTime = now.toISOString();
