@@ -72,19 +72,17 @@
 
 [size=18][b]技术栈[/b][/size]
 
-| 层 | 技术 |
-|------|------|
-| 前端 | Vue 2.7 + Vue Router + Vuex |
-| 构建 | Vite 5 |
-| 样式 | SCSS + CSS 变量 + iOS 风格设计系统 |
-| 后端 | Node.js + Express |
-| 数据库 | SQLite（better-sqlite3，WAL 模式） |
-| 实时通信 | WebSocket（ws） |
-| 图表 | Mermaid 11 |
-| 数学 | KaTeX 0.16 |
-| Markdown | marked 4 |
-| 视频 | Video.js 8 + HLS |
-| 认证 | bcryptjs + JWT（jose） |
+[b]前端[/b]  Vue 2.7 + Vue Router + Vuex
+[b]构建[/b]  Vite 5
+[b]样式[/b]  SCSS + CSS 变量 + iOS 风格设计系统
+[b]后端[/b]  Node.js + Express
+[b]数据库[/b]  SQLite（better-sqlite3，WAL 模式）
+[b]实时通信[/b]  WebSocket（ws）
+[b]图表[/b]  Mermaid 11
+[b]数学[/b]  KaTeX 0.16
+[b]Markdown[/b]  marked 4
+[b]视频[/b]  Video.js 8 + HLS
+[b]认证[/b]  bcryptjs + JWT（jose）
 
 [size=18][b][color=#FF9500]征集 Logo！[/color][/b][/size]
 
@@ -92,9 +90,9 @@
 
 [b]设计要求：[/b]
 
-1. 纯几何抽象，[b][color=#FF3B30]不要字母[/color][/b]（像 Apple 的苹果、Twitter 的鸟那样，符号本身就是品牌）
-2. 意象上能体现 [b]"教室 + 同学 + 网络连接"[/b]
-3. 极简、标志性强，缩小到 [b]16px[/b] 也能清晰辨认
+① 纯几何抽象，[b][color=#FF3B30]不要字母[/color][/b]（像 Apple 的苹果、Twitter 的鸟那样，符号本身就是品牌）
+② 意象上能体现 [b]"教室 + 同学 + 网络连接"[/b]
+③ 极简、标志性强，缩小到 [b]16px[/b] 也能清晰辨认
 
 有想法的朋友可以直接在评论区发图，或者到 GitHub 提 Issue / PR。
 
