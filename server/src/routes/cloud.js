@@ -40,8 +40,9 @@ var storage = multer.diskStorage({
     cb(null, photoDir);
   },
   filename: function(req, file, cb) {
+    var userId = req.user.user_id;
     var ext = path.extname(file.originalname) || '.jpg';
-    var filename = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + ext;
+    var filename = userId + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8) + ext;
     cb(null, filename);
   }
 });
@@ -117,22 +118,41 @@ router.post('/upload-batch', auth.requireAuth, upload.array('files', 10), functi
   res.json({ code: 200, data: { files: results } });
 });
 
-// 获取文件（需登录但不限制用户，方便在聊天/论坛中展示）
+// 获取文件（需登录，支持访问其他用户的共享图片）
 router.get('/files/:filename', auth.requireAuth, function(req, res) {
-  var userId = req.user.user_id;
   var filename = decodeURIComponent(req.params.filename);
-  var filePath = path.join(getUserDir(userId), 'photos', filename);
 
   // 安全检查：防止路径遍历
   if (filename.indexOf('..') !== -1 || filename.indexOf('/') !== -1 || filename.indexOf('\\') !== -1) {
     return res.status(400).json({ code: 400, message: '无效的文件名' });
   }
 
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ code: 404, message: '文件不存在' });
+  // 新格式文件名：userId_timestamp_random.ext
+  var parts = filename.split('_');
+  if (parts.length >= 3) {
+    var ownerId = parts[0];
+    var filePath = path.join(getUserDir(ownerId), 'photos', filename);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
   }
 
-  res.sendFile(filePath);
+  // 旧格式文件名：timestamp_random.ext - 遍历所有用户目录查找
+  try {
+    if (fs.existsSync(cloudDir)) {
+      var users = fs.readdirSync(cloudDir);
+      for (var i = 0; i < users.length; i++) {
+        var candidatePath = path.join(cloudDir, users[i], 'photos', filename);
+        if (fs.existsSync(candidatePath)) {
+          return res.sendFile(candidatePath);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  res.status(404).json({ code: 404, message: '文件不存在' });
 });
 
 // 删除文件

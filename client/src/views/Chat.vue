@@ -198,7 +198,7 @@
               :senderTitle="getSenderTitle(msg.sender_id || msg.user_id)"
               @recall="recallMessage"
               @context-menu="openContextMenu"
-              @image-context-menu="openImageContextMenu"
+              @preview-image="previewImage"
               @toggle-reaction="toggleReaction"
               @scroll-to="scrollToMessage"
             />
@@ -251,6 +251,12 @@
           <button class="ctx-item" @click="handleContextAction('forward')">
             <i class="fa-solid fa-share"></i> 转发
           </button>
+          <button v-if="contextMenuImageUrl" class="ctx-item" @click="handleContextAction('saveImage')">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
+          </button>
+          <button v-if="contextMenuImageUrl" class="ctx-item" @click="handleContextAction('previewImage')">
+            <i class="fa-solid fa-image"></i> 查看图片
+          </button>
           <button v-if="contextMenuTarget && isOwnMessage(contextMenuTarget)" class="ctx-item ctx-item-danger" @click="handleContextAction('delete')">
             <i class="fa-solid fa-trash"></i> 删除
           </button>
@@ -258,19 +264,13 @@
       </div>
     </transition>
 
-    <!-- Image Context Menu -->
-    <transition name="fade-quick">
-      <div v-if="showImageContextMenu" class="context-menu-overlay" @click="closeImageContextMenu">
-        <div
-          class="context-menu-popup"
-          :style="{ top: imageContextMenuPos.y + 'px', left: imageContextMenuPos.x + 'px' }"
-          @click.stop
-        >
-          <button class="ctx-item" @click="saveImageToCloud">
-            <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
-          </button>
-          <button class="ctx-item" @click="copyImageUrl">
-            <i class="fa-regular fa-copy"></i> 复制图片链接
+    <!-- Image Preview -->
+    <transition name="fade">
+      <div v-if="showImagePreview" class="image-preview-overlay" @click="closeImagePreview">
+        <div class="image-preview-content" @click.stop>
+          <img :src="imagePreviewUrl" class="preview-image" />
+          <button class="preview-close-btn" @click="closeImagePreview">
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>
@@ -720,10 +720,10 @@ export default {
       showContextMenu: false,
       contextMenuTarget: null,
       contextMenuPos: { x: 0, y: 0 },
-      // Image context menu
-      showImageContextMenu: false,
-      imageContextMenuUrl: null,
-      imageContextMenuPos: { x: 0, y: 0 },
+      contextMenuImageUrl: null,
+      // Image preview
+      showImagePreview: false,
+      imagePreviewUrl: null,
       // Reaction picker
       showReactionPicker: false,
       reactionPickerTarget: null,
@@ -2658,11 +2658,13 @@ export default {
     },
     // Context menu
     openContextMenu: function(msg, event) {
+      this.closeReactionPicker();
+
       var x = event.clientX;
       var y = event.clientY;
       // Adjust position to avoid overflow
       var menuWidth = 160;
-      var menuHeight = 220;
+      var menuHeight = 280;
       if (x + menuWidth > window.innerWidth) {
         x = window.innerWidth - menuWidth - 8;
       }
@@ -2671,38 +2673,25 @@ export default {
       }
       this.contextMenuTarget = msg;
       this.contextMenuPos = { x: x, y: y };
+      this.contextMenuImageUrl = event.imageUrl || null;
       this.showContextMenu = true;
     },
     closeContextMenu: function() {
       this.showContextMenu = false;
       this.contextMenuTarget = null;
+      this.contextMenuImageUrl = null;
     },
-    // Image context menu
-    openImageContextMenu: function(msg, imageUrl, event) {
-      var x = event.clientX;
-      var y = event.clientY;
-      // Adjust position to avoid overflow
-      var menuWidth = 160;
-      var menuHeight = 100;
-      if (x + menuWidth > window.innerWidth) {
-        x = window.innerWidth - menuWidth - 8;
-      }
-      if (y + menuHeight > window.innerHeight) {
-        y = window.innerHeight - menuHeight - 8;
-      }
-      this.imageContextMenuUrl = imageUrl;
-      this.imageContextMenuPos = { x: x, y: y };
-      this.showImageContextMenu = true;
+    // Image preview
+    previewImage: function(imageUrl) {
+      this.imagePreviewUrl = imageUrl;
+      this.showImagePreview = true;
     },
-    closeImageContextMenu: function() {
-      this.showImageContextMenu = false;
-      this.imageContextMenuUrl = null;
+    closeImagePreview: function() {
+      this.showImagePreview = false;
+      this.imagePreviewUrl = null;
     },
-    saveImageToCloud: function() {
+    saveImageToCloud: function(imageUrl) {
       var self = this;
-      var imageUrl = self.imageContextMenuUrl;
-      self.closeImageContextMenu();
-
       if (!imageUrl) return;
 
       // 调用后端 API 转存图片
@@ -2717,39 +2706,22 @@ export default {
         self.$store.commit('toast/SHOW_TOAST', { message: '转存失败，请重试', type: 'error' });
       });
     },
-    copyImageUrl: function() {
-      var self = this;
-      var imageUrl = self.imageContextMenuUrl;
-      self.closeImageContextMenu();
-
-      if (!imageUrl) return;
-
-      // 复制图片 URL
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(imageUrl).then(function() {
-          self.$store.commit('toast/SHOW_TOAST', { message: '图片链接已复制', type: 'success' });
-        }).catch(function() {
-          self.$store.commit('toast/SHOW_TOAST', { message: '复制失败', type: 'error' });
-        });
-      } else {
-        var textarea = document.createElement('textarea');
-        textarea.value = imageUrl;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-          document.execCommand('copy');
-          self.$store.commit('toast/SHOW_TOAST', { message: '图片链接已复制', type: 'success' });
-        } catch (e) {
-          self.$store.commit('toast/SHOW_TOAST', { message: '复制失败', type: 'error' });
-        }
-        document.body.removeChild(textarea);
-      }
-    },
     handleContextAction: function(action) {
       var self = this;
       var msg = self.contextMenuTarget;
+      var imageUrl = self.contextMenuImageUrl;
+
+      if (action === 'saveImage') {
+        self.closeContextMenu();
+        self.saveImageToCloud(imageUrl);
+        return;
+      }
+      if (action === 'previewImage') {
+        self.closeContextMenu();
+        self.previewImage(imageUrl);
+        return;
+      }
+
       self.closeContextMenu();
 
       if (!msg) return;
@@ -4721,5 +4693,52 @@ export default {
   .settings-panel-sm { width: 260px; }
   .settings-header { padding: 14px 18px; }
   .settings-body { padding: 12px 18px; }
+}
+
+/* Image Preview */
+.image-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.image-preview-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: var(--radius-lg);
+  object-fit: contain;
+}
+
+.preview-close-btn {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.preview-close-btn:active {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>

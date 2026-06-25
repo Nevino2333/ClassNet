@@ -116,13 +116,16 @@ export default {
     },
     deleteFile: function(file) {
       var self = this;
-      if (!confirm('确认删除？')) return;
-      api.delete('/cloud/files/' + encodeURIComponent(file.name)).then(function(res) {
-        if (res.data.code === 200) {
-          self.files = self.files.filter(function(f) { return f.name !== file.name; });
-        }
-      }).catch(function() {
-        self.$store.commit('toast/SHOW_TOAST', { message: '删除失败', type: 'error' });
+      self.$modal.confirm({ message: '确认删除此图片？' }).then(function(result) {
+        if (!result) return;
+        api.delete('/cloud/files/' + encodeURIComponent(file.name)).then(function(res) {
+          if (res.data.code === 200) {
+            self.files = self.files.filter(function(f) { return f.name !== file.name; });
+            self.$store.commit('toast/SHOW_TOAST', { message: '删除成功', type: 'success' });
+          }
+        }).catch(function() {
+          self.$store.commit('toast/SHOW_TOAST', { message: '删除失败', type: 'error' });
+        });
       });
     },
     previewFile: function(file) {

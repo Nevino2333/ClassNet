@@ -289,6 +289,16 @@ export default {
     onContentClick: function(e) {
       var target = e.target;
       while (target && target !== e.currentTarget) {
+        // 处理照片徽章点击（显示图片预览）
+        if (target.classList.contains('photo-badge')) {
+          e.preventDefault();
+          e.stopPropagation();
+          var imageUrl = target.getAttribute('data-image-url');
+          if (imageUrl) {
+            this.$emit('preview-image', imageUrl);
+          }
+          return;
+        }
         // 处理图片点击（阻止默认行为）
         if (target.tagName === 'IMG' && target.classList.contains('msg-image')) {
           e.preventDefault();
@@ -400,7 +410,7 @@ export default {
         var regex = new RegExp('(' + escaped + ')', 'gi');
         html = html.replace(regex, '<mark class="search-highlight">$1</mark>');
       }
-      // Step 5: Restore image URLs as img tags
+      // Step 5: Restore image URLs as photo badges (clickable)
       for (var i = 0; i < imageUrls.length; i++) {
         var placeholder = '%%IMG' + i + '%%';
         var imgUrl = imageUrls[i];
@@ -409,8 +419,8 @@ export default {
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
-        var imgHtml = '<img src="' + escapedUrl + '" class="msg-image" data-image-url="' + escapedUrl + '" loading="lazy" />';
-        html = html.replace(placeholder, imgHtml);
+        var badgeHtml = '<span class="photo-badge" data-image-url="' + escapedUrl + '"><i class="fa-solid fa-image"></i> [照片]</span>';
+        html = html.replace(placeholder, badgeHtml);
       }
       // Step 6: Restore other URLs as clickable links
       for (var i = 0; i < urls.length; i++) {
@@ -435,29 +445,32 @@ export default {
       self.longPressFired = false;
       self.longPressImageUrl = null;
 
-      // 检测触摸点是否在图片上
+      // 检测触摸点是否在图片或照片徽章上
       var touch = e.touches[0];
       var target = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (target && target.tagName === 'IMG' && target.classList.contains('msg-image')) {
-        self.longPressImageUrl = target.getAttribute('data-image-url');
+
+      // 检查是否是照片徽章
+      while (target && target !== self.$el) {
+        if (target.classList.contains('photo-badge')) {
+          self.longPressImageUrl = target.getAttribute('data-image-url');
+          break;
+        }
+        if (target.tagName === 'IMG' && target.classList.contains('msg-image')) {
+          self.longPressImageUrl = target.getAttribute('data-image-url');
+          break;
+        }
+        target = target.parentNode;
       }
 
       self.longPressTimer = setTimeout(function() {
         self.longPressFired = true;
-        // 如果长按的是图片，弹出图片菜单
-        if (self.longPressImageUrl) {
-          self.$emit('image-context-menu', self.message, self.longPressImageUrl, {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            preventDefault: function() {}
-          });
-        } else {
-          self.$emit('context-menu', self.message, {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            preventDefault: function() {}
-          });
-        }
+        // 长按统一触发 context-menu，附带 imageUrl（如有）
+        self.$emit('context-menu', self.message, {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: function() {},
+          imageUrl: self.longPressImageUrl
+        });
       }, 600);
     },
     onTouchEnd: function() {
@@ -968,5 +981,30 @@ export default {
 
 .context-menu-item:hover {
   background: var(--bg-color);
+}
+
+.photo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--glass-bg);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.photo-badge:active {
+  transform: scale(0.92);
+  opacity: 0.7;
+}
+
+.photo-badge i {
+  font-size: 12px;
+  opacity: 0.7;
 }
 </style>
