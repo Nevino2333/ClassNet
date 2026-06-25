@@ -203,6 +203,19 @@ router.post('/guest-upload', guestUpload.single('file'), function(req, res) {
   });
 });
 
+// guest-upload 的错误处理（上传码无效/文件类型不支持等）
+router.use('/guest-upload', function(err, req, res, next) {
+  if (err) {
+    var msg = err.message || '上传失败';
+    // multer 文件大小限制
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      msg = '文件超过 200MB 限制';
+    }
+    return res.status(400).json({ code: 400, message: msg });
+  }
+  next();
+});
+
 // 验证上传码（前端检查码是否有效，不记录失败次数）
 router.post('/verify-code', function(req, res) {
   var code = (req.body && req.body.code) || '';

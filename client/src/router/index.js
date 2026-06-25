@@ -136,6 +136,11 @@ var routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/guest-upload',
+    name: 'GuestUpload',
+    component: function() { return import('@/views/GuestUpload.vue'); }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: function() { return import('@/views/Settings.vue'); },

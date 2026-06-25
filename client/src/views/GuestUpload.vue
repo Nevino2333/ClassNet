@@ -1,188 +1,202 @@
 <template>
-  <div class="cloud-upload-page">
-    <div class="upload-header">
-      <button class="back-btn" @click="$router.go(-1)" aria-label="返回">
+  <div class="guest-upload-page">
+    <!-- 顶部 -->
+    <div class="guest-header">
+      <button class="back-btn" @click="goBack" aria-label="返回">
         <i class="fa-solid fa-arrow-left"></i>
       </button>
-      <h2>上传到云盘</h2>
+      <h2>快捷上传</h2>
     </div>
 
-    <!-- 模式切换 -->
-    <div class="mode-tabs">
-      <button class="mode-tab" :class="{ active: mode === 'file' }" @click="switchMode('file')">
-        <i class="fa-solid fa-file-arrow-up"></i>
-        <span>文件</span>
-      </button>
-      <button class="mode-tab" :class="{ active: mode === 'audio' }" @click="switchMode('audio')">
-        <i class="fa-solid fa-microphone"></i>
-        <span>录音</span>
-      </button>
-      <button class="mode-tab" :class="{ active: mode === 'video' }" @click="switchMode('video')">
-        <i class="fa-solid fa-video"></i>
-        <span>录像</span>
-      </button>
-    </div>
-
-    <!-- 文件上传模式 -->
-    <div v-if="mode === 'file'" class="mode-content">
-      <input ref="fileInput" type="file" accept="image/*,audio/*,video/*" multiple style="display:none" @change="onFileSelect" />
-      <div v-if="!uploading && !uploaded && selectedFiles.length === 0" class="upload-actions">
-        <button class="upload-action-btn" @click="takePhoto">
-          <i class="fa-solid fa-camera"></i>
-          <span>拍照上传</span>
-        </button>
-        <button class="upload-action-btn" @click="selectFromAlbum">
-          <i class="fa-solid fa-images"></i>
-          <span>从相册选择</span>
-        </button>
-        <button class="upload-action-btn" @click="$refs.fileInput.click()">
-          <i class="fa-solid fa-file"></i>
-          <span>选择文件</span>
+    <!-- 上传码输入区（无码时显示） -->
+    <div v-if="!uploadCode" class="code-input-section">
+      <div class="code-input-card">
+        <i class="fa-solid fa-key code-input-icon"></i>
+        <h3>请输入上传码</h3>
+        <p class="code-input-desc">从已登录用户的云盘页面获取6位上传码</p>
+        <input
+          v-model="manualCode"
+          type="text"
+          class="code-input"
+          :class="{ 'input-error': manualError }"
+          placeholder="6位上传码"
+          maxlength="6"
+          @input="onManualInput"
+        />
+        <transition name="error-fade">
+          <div v-if="manualError" class="code-error">{{ manualError }}</div>
+        </transition>
+        <button class="code-confirm-btn" :disabled="manualCode.length !== 6 || manualChecking" @click="verifyManualCode">
+          <span v-if="manualChecking" class="btn-loading"></span>
+          <span v-else>验证</span>
         </button>
       </div>
-      <div v-if="selectedFiles.length > 0" class="file-list">
-        <div v-for="(f, i) in selectedFiles" :key="i" class="file-item">
-          <div class="file-item-icon">
-            <i :class="getFileIcon(f)"></i>
+    </div>
+
+    <!-- 主内容（有码时显示） -->
+    <div v-else class="upload-main">
+      <!-- 上传码条 -->
+      <div class="code-bar">
+        <span class="code-bar-label">上传码：</span>
+        <span class="code-bar-value">{{ uploadCode }}</span>
+        <button class="code-bar-change" @click="changeCode">更换</button>
+      </div>
+
+      <!-- 模式切换 -->
+      <div class="mode-tabs">
+        <button class="mode-tab" :class="{ active: mode === 'file' }" @click="switchMode('file')">
+          <i class="fa-solid fa-file-arrow-up"></i>
+          <span>文件</span>
+        </button>
+        <button class="mode-tab" :class="{ active: mode === 'audio' }" @click="switchMode('audio')">
+          <i class="fa-solid fa-microphone"></i>
+          <span>录音</span>
+        </button>
+        <button class="mode-tab" :class="{ active: mode === 'video' }" @click="switchMode('video')">
+          <i class="fa-solid fa-video"></i>
+          <span>录像</span>
+        </button>
+      </div>
+
+      <!-- 文件上传模式 -->
+      <div v-if="mode === 'file'" class="mode-content">
+        <input ref="fileInput" type="file" accept="image/*,audio/*,video/*" multiple style="display:none" @change="onFileSelect" />
+        <div v-if="selectedFiles.length === 0" class="empty-upload" @click="$refs.fileInput.click()">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <p>点击选择文件</p>
+          <p class="empty-hint">支持图片/音频/视频</p>
+        </div>
+        <div v-else class="file-list">
+          <div v-for="(f, i) in selectedFiles" :key="i" class="file-item">
+            <div class="file-item-icon">
+              <i :class="getFileIcon(f)"></i>
+            </div>
+            <div class="file-item-info">
+              <span class="file-item-name">{{ f.name }}</span>
+              <span class="file-item-size">{{ formatSize(f.size) }}</span>
+            </div>
+            <button class="file-item-remove" @click="removeFile(i)">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
-          <div class="file-item-info">
-            <span class="file-item-name">{{ f.name }}</span>
-            <span class="file-item-size">{{ formatSize(f.size) }}</span>
+          <div class="file-actions">
+            <button class="action-btn-secondary" @click="$refs.fileInput.click()">添加更多</button>
+            <button class="action-btn-primary" :disabled="uploading" @click="uploadFiles">
+              <span v-if="uploading" class="btn-loading-small"></span>
+              <span v-else>上传 {{ selectedFiles.length }} 个文件</span>
+            </button>
           </div>
-          <button class="file-item-remove" @click="removeFile(i)">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <div class="file-actions">
-          <button class="action-btn-secondary" @click="$refs.fileInput.click()">添加更多</button>
-          <button class="action-btn-primary" :disabled="uploading" @click="uploadFiles">
-            <span v-if="uploading" class="btn-loading-small"></span>
-            <span v-else>上传 {{ selectedFiles.length }} 个文件</span>
-          </button>
         </div>
       </div>
-      <div v-if="uploading" class="upload-loading">
-        <div class="upload-spinner"></div>
-        <p>正在上传...</p>
-      </div>
-      <div v-if="uploaded" class="upload-success">
-        <i class="fa-solid fa-circle-check"></i>
-        <p>上传成功！</p>
-        <button class="upload-again" @click="uploaded = false">继续上传</button>
-      </div>
-    </div>
 
-    <!-- 录音模式 -->
-    <div v-if="mode === 'audio'" class="mode-content">
-      <div v-if="!mediaRecorderSupported" class="not-supported">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <p>当前浏览器不支持录音功能</p>
-      </div>
-      <div v-else-if="!audioBlob" class="record-area">
-        <div class="record-timer" :class="{ recording: audioRecording, paused: audioPaused }">
-          {{ formatTime(recordSeconds) }}
+      <!-- 录音模式 -->
+      <div v-if="mode === 'audio'" class="mode-content">
+        <div v-if="!mediaRecorderSupported" class="not-supported">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p>当前浏览器不支持录音功能</p>
         </div>
-        <div class="record-pulse-wrap">
+        <div v-else-if="!audioBlob" class="record-area">
+          <div class="record-timer" :class="{ recording: audioRecording, paused: audioPaused }">
+            {{ formatTime(recordSeconds) }}
+          </div>
           <div class="record-pulse" :class="{ active: audioRecording && !audioPaused }"></div>
           <button class="record-btn" :class="{ recording: audioRecording }" @click="toggleAudioRecord">
             <i :class="audioRecording ? 'fa-solid fa-stop' : 'fa-solid fa-microphone'"></i>
           </button>
-        </div>
-        <button v-if="audioRecording" class="pause-btn" @click="toggleAudioPause">
-          <i :class="audioPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
-          <span>{{ audioPaused ? '继续' : '暂停' }}</span>
-        </button>
-        <p class="record-hint" v-if="!audioRecording">点击按钮开始录音</p>
-        <p class="record-hint" v-else-if="audioPaused">已暂停，点击继续录音</p>
-        <p class="record-hint" v-else>录音中...</p>
-      </div>
-      <div v-else class="record-preview">
-        <div class="preview-label">
-          <i class="fa-solid fa-music"></i>
-          <span>录音完成</span>
-        </div>
-        <audio :src="audioUrl" controls class="preview-audio"></audio>
-        <div class="preview-actions">
-          <button class="action-btn-secondary" @click="resetAudio">重录</button>
-          <button class="action-btn-primary" :disabled="uploading" @click="uploadAudio">
-            <span v-if="uploading" class="btn-loading-small"></span>
-            <span v-else>上传录音</span>
+          <button v-if="audioRecording" class="pause-btn" @click="toggleAudioPause">
+            <i :class="audioPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
+            <span>{{ audioPaused ? '继续' : '暂停' }}</span>
           </button>
+          <p class="record-hint" v-if="!audioRecording">点击按钮开始录音</p>
+          <p class="record-hint" v-else-if="audioPaused">已暂停，点击继续录音</p>
+          <p class="record-hint" v-else>录音中...</p>
+        </div>
+        <div v-else class="record-preview">
+          <div class="preview-label">
+            <i class="fa-solid fa-music"></i>
+            <span>录音完成</span>
+          </div>
+          <audio :src="audioUrl" controls class="preview-audio"></audio>
+          <div class="preview-actions">
+            <button class="action-btn-secondary" @click="resetAudio">重录</button>
+            <button class="action-btn-primary" :disabled="uploading" @click="uploadAudio">
+              <span v-if="uploading" class="btn-loading-small"></span>
+              <span v-else>上传录音</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 录像模式 -->
+      <div v-if="mode === 'video'" class="mode-content">
+        <div v-if="!mediaRecorderSupported" class="not-supported">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p>当前浏览器不支持录像功能</p>
+        </div>
+        <div v-else-if="!videoBlob" class="video-area">
+          <div class="video-container">
+            <video ref="videoPreview" autoplay muted playsinline></video>
+            <div v-if="videoRecording" class="video-recording-badge">
+              <span class="rec-dot"></span>
+              <span>{{ formatTime(recordSeconds) }}</span>
+            </div>
+            <div v-if="videoError" class="video-error-overlay">
+              <i class="fa-solid fa-video-slash"></i>
+              <p>{{ videoError }}</p>
+              <button @click="startCamera">重试</button>
+            </div>
+          </div>
+          <div class="video-controls">
+            <button v-if="!videoRecording" class="video-ctrl-btn" @click="switchCamera" :disabled="!cameraReady">
+              <i class="fa-solid fa-camera-rotate"></i>
+              <span>切换</span>
+            </button>
+            <button class="record-btn video-record-btn" :class="{ recording: videoRecording }" @click="toggleVideoRecord">
+              <i :class="videoRecording ? 'fa-solid fa-stop' : 'fa-solid fa-circle'"></i>
+            </button>
+            <button v-if="videoRecording" class="video-ctrl-btn" @click="toggleVideoPause">
+              <i :class="videoPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
+              <span>{{ videoPaused ? '继续' : '暂停' }}</span>
+            </button>
+          </div>
+          <p class="record-hint" v-if="!videoRecording && cameraReady">点击按钮开始录像</p>
+          <p class="record-hint" v-else-if="videoRecording && !videoPaused">录像中...</p>
+          <p class="record-hint" v-else-if="videoPaused">已暂停</p>
+        </div>
+        <div v-else class="record-preview">
+          <div class="preview-label">
+            <i class="fa-solid fa-film"></i>
+            <span>录像完成</span>
+          </div>
+          <video :src="videoUrl" controls class="preview-video"></video>
+          <div class="preview-actions">
+            <button class="action-btn-secondary" @click="resetVideo">重录</button>
+            <button class="action-btn-primary" :disabled="uploading" @click="uploadVideo">
+              <span v-if="uploading" class="btn-loading-small"></span>
+              <span v-else>上传视频</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 录像模式 -->
-    <div v-if="mode === 'video'" class="mode-content">
-      <div v-if="!mediaRecorderSupported" class="not-supported">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <p>当前浏览器不支持录像功能</p>
-      </div>
-      <div v-else-if="!videoBlob" class="video-area">
-        <div class="video-container">
-          <video ref="videoPreview" autoplay muted playsinline></video>
-          <div v-if="videoRecording" class="video-recording-badge">
-            <span class="rec-dot"></span>
-            <span>{{ formatTime(recordSeconds) }}</span>
-          </div>
-          <div v-if="videoError" class="video-error-overlay">
-            <i class="fa-solid fa-video-slash"></i>
-            <p>{{ videoError }}</p>
-            <button @click="startCamera">重试</button>
-          </div>
-        </div>
-        <div class="video-controls">
-          <button v-if="!videoRecording" class="video-ctrl-btn" @click="switchCamera" :disabled="!cameraReady">
-            <i class="fa-solid fa-camera-rotate"></i>
-            <span>切换</span>
-          </button>
-          <button class="record-btn video-record-btn" :class="{ recording: videoRecording }" @click="toggleVideoRecord">
-            <i :class="videoRecording ? 'fa-solid fa-stop' : 'fa-solid fa-circle'"></i>
-          </button>
-          <button v-if="videoRecording" class="video-ctrl-btn" @click="toggleVideoPause">
-            <i :class="videoPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
-            <span>{{ videoPaused ? '继续' : '暂停' }}</span>
-          </button>
-        </div>
-        <p class="record-hint" v-if="!videoRecording && cameraReady">点击按钮开始录像</p>
-        <p class="record-hint" v-else-if="videoRecording && !videoPaused">录像中...</p>
-        <p class="record-hint" v-else-if="videoPaused">已暂停</p>
-      </div>
-      <div v-else class="record-preview">
-        <div class="preview-label">
-          <i class="fa-solid fa-film"></i>
-          <span>录像完成</span>
-        </div>
-        <video :src="videoUrl" controls class="preview-video"></video>
-        <div class="preview-actions">
-          <button class="action-btn-secondary" @click="resetVideo">重录</button>
-          <button class="action-btn-primary" :disabled="uploading" @click="uploadVideo">
-            <span v-if="uploading" class="btn-loading-small"></span>
-            <span v-else>上传视频</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 上传遮罩 -->
-    <div v-if="uploading && mode !== 'file'" class="upload-overlay">
+    <!-- 上传进度 -->
+    <div v-if="uploading" class="upload-overlay">
       <div class="upload-progress-box">
         <div class="upload-spinner"></div>
         <span>正在上传...</span>
       </div>
     </div>
 
-    <!-- Toast -->
+    <!-- 成功提示 -->
     <transition name="toast-fade">
       <div v-if="toastMsg" class="toast-msg" :class="toastType">{{ toastMsg }}</div>
     </transition>
-
-    <input ref="cameraInput" type="file" accept="image/*" capture="environment" style="display:none" @change="handleFile" />
   </div>
 </template>
 
 <script>
-import api from '@/utils/api';
+import axios from 'axios';
 
 // 检测 MediaRecorder 支持
 function isMediaRecorderSupported() {
@@ -246,12 +260,15 @@ function getMediaTypeByName(name) {
 }
 
 export default {
-  name: 'CloudUpload',
+  name: 'GuestUpload',
   data: function() {
     return {
+      uploadCode: '',
+      manualCode: '',
+      manualError: '',
+      manualChecking: false,
       mode: 'file',
       uploading: false,
-      uploaded: false,
       toastMsg: '',
       toastType: 'success',
       toastTimer: null,
@@ -286,6 +303,12 @@ export default {
       return isMediaRecorderSupported();
     }
   },
+  mounted: function() {
+    var code = this.$route.query.code;
+    if (code) {
+      this.uploadCode = String(code).toUpperCase();
+    }
+  },
   beforeDestroy: function() {
     this.cleanupAudio();
     this.cleanupVideo();
@@ -300,6 +323,15 @@ export default {
   },
   methods: {
     // ===== 通用 =====
+    goBack: function() {
+      this.cleanupAudio();
+      this.cleanupVideo();
+      if (window.history.length > 1) {
+        this.$router.go(-1);
+      } else {
+        this.$router.push('/login');
+      }
+    },
     showToast: function(msg, type) {
       var self = this;
       self.toastMsg = msg;
@@ -328,31 +360,51 @@ export default {
       return 'fa-solid fa-file';
     },
 
+    // ===== 上传码输入 =====
+    onManualInput: function() {
+      this.manualCode = this.manualCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (this.manualError) this.manualError = '';
+    },
+    verifyManualCode: function() {
+      var self = this;
+      if (self.manualCode.length !== 6) {
+        self.manualError = '请输入6位上传码';
+        return;
+      }
+      self.manualChecking = true;
+      self.manualError = '';
+      axios.post('/api/cloud/verify-code', { code: self.manualCode }).then(function(res) {
+        self.manualChecking = false;
+        var data = res.data;
+        if (data.code === 200 && data.data && data.data.valid) {
+          self.uploadCode = self.manualCode;
+        } else {
+          self.manualError = (data.data && data.data.message) || '上传码无效';
+        }
+      }).catch(function() {
+        self.manualChecking = false;
+        self.manualError = '验证失败，请检查网络';
+      });
+    },
+    changeCode: function() {
+      this.uploadCode = '';
+      this.manualCode = '';
+      this.manualError = '';
+    },
+
     // ===== 模式切换 =====
     switchMode: function(m) {
       if (this.mode === m) return;
+      // 离开录音/录像模式时清理
       if (this.mode === 'audio') this.cleanupAudio();
       if (this.mode === 'video') this.cleanupVideo();
       this.mode = m;
-      this.uploaded = false;
       if (m === 'video' && !this.videoBlob) {
         this.startCamera();
       }
     },
 
     // ===== 文件上传 =====
-    takePhoto: function() {
-      if (window.AndroidJSBridge && window.AndroidJSBridge.takePhoto) {
-        window.AndroidJSBridge.takePhoto();
-      } else {
-        this.$refs.cameraInput.setAttribute('capture', 'environment');
-        this.$refs.cameraInput.click();
-      }
-    },
-    selectFromAlbum: function() {
-      this.$refs.cameraInput.removeAttribute('capture');
-      this.$refs.cameraInput.click();
-    },
     onFileSelect: function(e) {
       var files = e.target.files;
       for (var i = 0; i < files.length; i++) {
@@ -362,13 +414,6 @@ export default {
     },
     removeFile: function(idx) {
       this.selectedFiles.splice(idx, 1);
-    },
-    handleFile: function(e) {
-      var self = this;
-      var file = e.target.files[0];
-      if (!file) return;
-      self.selectedFiles.push(file);
-      e.target.value = '';
     },
     uploadFiles: function() {
       var self = this;
@@ -385,18 +430,18 @@ export default {
           if (failed > 0) {
             self.showToast('上传完成，' + failed + ' 个失败', 'error');
           } else {
-            self.uploaded = true;
-            self.selectedFiles = [];
             self.showToast('全部上传成功', 'success');
+            self.selectedFiles = [];
           }
         }
       }
 
       for (var i = 0; i < total; i++) {
         (function(file) {
-          var formData = new FormData();
-          formData.append('file', file);
-          api.post('/cloud/upload', formData, {
+          var fd = new FormData();
+          fd.append('file', file);
+          fd.append('code', self.uploadCode);
+          axios.post('/api/cloud/guest-upload', fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
             timeout: 120000
           }).then(function() {
@@ -503,9 +548,10 @@ export default {
       var ext = extFromMime(self.audioBlob.type);
       var filename = 'recording_' + Date.now() + ext;
       var file = new File([self.audioBlob], filename, { type: self.audioBlob.type });
-      var formData = new FormData();
-      formData.append('file', file);
-      api.post('/cloud/upload', formData, {
+      var fd = new FormData();
+      fd.append('file', file);
+      fd.append('code', self.uploadCode);
+      axios.post('/api/cloud/guest-upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000
       }).then(function() {
@@ -545,6 +591,7 @@ export default {
     },
     switchCamera: function() {
       this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+      // 停止当前流并重新启动
       this.cleanupVideoStream();
       this.cameraReady = false;
       this.startCamera();
@@ -581,6 +628,7 @@ export default {
         var type = mime || 'video/webm';
         self.videoBlob = new Blob(self.videoChunks, { type: type });
         self.videoUrl = URL.createObjectURL(self.videoBlob);
+        // 停止摄像头预览
         self.cleanupVideoStream();
         self.cameraReady = false;
       };
@@ -617,6 +665,7 @@ export default {
       this.videoUrl = '';
       this.videoChunks = [];
       this.recordSeconds = 0;
+      // 重新启动摄像头
       this.startCamera();
     },
     cleanupVideoStream: function() {
@@ -647,9 +696,10 @@ export default {
       var ext = extFromMime(self.videoBlob.type);
       var filename = 'video_' + Date.now() + ext;
       var file = new File([self.videoBlob], filename, { type: self.videoBlob.type });
-      var formData = new FormData();
-      formData.append('file', file);
-      api.post('/cloud/upload', formData, {
+      var fd = new FormData();
+      fd.append('file', file);
+      fd.append('code', self.uploadCode);
+      axios.post('/api/cloud/guest-upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 300000
       }).then(function() {
@@ -700,13 +750,15 @@ export default {
 </script>
 
 <style scoped>
-.cloud-upload-page {
+.guest-upload-page {
   min-height: 100vh;
   background: var(--bg-color, #f2f2f7);
   display: flex;
   flex-direction: column;
 }
-.upload-header {
+
+/* 顶部 */
+.guest-header {
   display: flex;
   align-items: center;
   padding: 12px 16px;
@@ -714,7 +766,7 @@ export default {
   border-bottom: 0.5px solid var(--separator-color, #e5e5ea);
   position: relative;
 }
-.upload-header h2 {
+.guest-header h2 {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -735,6 +787,127 @@ export default {
   justify-content: center;
 }
 .back-btn:active { transform: scale(0.92); opacity: 0.7; }
+
+/* 上传码输入 */
+.code-input-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.code-input-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--card-bg, #fff);
+  border-radius: var(--radius-xl, 20px);
+  padding: 36px 28px;
+  text-align: center;
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.08));
+}
+.code-input-icon {
+  font-size: 48px;
+  color: var(--primary-color, #007aff);
+  margin-bottom: 16px;
+}
+.code-input-card h3 {
+  font-size: var(--font-size-title3, 20px);
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--text-primary, #000);
+}
+.code-input-desc {
+  font-size: var(--font-size-sm, 13px);
+  color: var(--text-secondary, #8e8e93);
+  margin: 0 0 24px 0;
+}
+.code-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--border-color, #e5e5ea);
+  border-radius: var(--radius-md, 12px);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 8px;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-primary, #000);
+  background: var(--bg-color, #fff);
+  box-sizing: border-box;
+}
+.code-input:focus {
+  border-color: var(--primary-color, #007aff);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  outline: none;
+}
+.code-input.input-error {
+  border-color: var(--danger-color, #ff3b30);
+}
+.code-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--danger-color, #ff3b30);
+  border-radius: var(--radius-md, 12px);
+  font-size: var(--font-size-sm, 13px);
+}
+.code-confirm-btn {
+  width: 100%;
+  height: 50px;
+  margin-top: 16px;
+  background: var(--primary-color, #007aff);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md, 12px);
+  font-size: var(--font-size-subheadline, 15px);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.code-confirm-btn:active { transform: scale(0.92); opacity: 0.7; }
+.code-confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 主内容 */
+.upload-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 上传码条 */
+.code-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--primary-light, rgba(0, 122, 255, 0.1));
+  gap: 8px;
+}
+.code-bar-label {
+  font-size: var(--font-size-sm, 13px);
+  color: var(--text-secondary, #8e8e93);
+}
+.code-bar-value {
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-size: var(--font-size-body, 17px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--primary-color, #007aff);
+}
+.code-bar-change {
+  margin-left: auto;
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid var(--primary-color, #007aff);
+  color: var(--primary-color, #007aff);
+  border-radius: var(--radius-md, 12px);
+  font-size: var(--font-size-sm, 13px);
+  cursor: pointer;
+  min-height: 32px;
+}
+.code-bar-change:active { transform: scale(0.92); opacity: 0.7; }
 
 /* 模式切换 */
 .mode-tabs {
@@ -773,31 +946,26 @@ export default {
 }
 
 /* 文件上传 */
-.upload-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 320px;
-  margin: 0 auto;
-  padding-top: 20px;
-}
-.upload-action-btn {
+.empty-upload {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 28px 20px;
-  background: var(--card-bg, #fff);
-  border: none;
-  border-radius: var(--radius-xl, 16px);
-  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.08));
+  justify-content: center;
+  min-height: 240px;
+  border: 2px dashed var(--separator-color, #e5e5ea);
+  border-radius: var(--radius-lg, 16px);
   cursor: pointer;
+  color: var(--text-secondary, #8e8e93);
+  transition: border-color 0.2s, background 0.2s;
 }
-.upload-action-btn:active { transform: scale(0.95); opacity: 0.8; }
-.upload-action-btn i { font-size: 36px; color: var(--primary-color, #007aff); }
-.upload-action-btn span { font-size: var(--font-size-body, 15px); }
-
+.empty-upload:active {
+  border-color: var(--primary-color, #007aff);
+  background: var(--primary-light, rgba(0, 122, 255, 0.05));
+}
+.empty-upload i { font-size: 48px; margin-bottom: 12px; }
+.empty-upload p { margin: 0; font-size: var(--font-size-body, 17px); }
+.empty-hint { font-size: var(--font-size-sm, 13px) !important; margin-top: 4px !important; }
 .file-list {
   display: flex;
   flex-direction: column;
@@ -858,35 +1026,6 @@ export default {
   margin-top: 16px;
 }
 
-.upload-loading, .upload-success {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding-top: 60px;
-}
-.upload-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--separator-color, #e5e5ea);
-  border-top-color: var(--primary-color, #007aff);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.upload-success i { font-size: 60px; color: var(--success-color, #34c759); }
-.upload-success p { margin: 0; font-size: var(--font-size-body, 16px); }
-.upload-again {
-  padding: 10px 24px;
-  background: var(--primary-color, #007aff);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md, 12px);
-  cursor: pointer;
-  font-size: var(--font-size-body, 15px);
-}
-.upload-again:active { transform: scale(0.95); opacity: 0.8; }
-
 /* 通用按钮 */
 .action-btn-primary {
   flex: 1;
@@ -940,12 +1079,6 @@ export default {
 .record-timer.paused { color: var(--warning-color, #ff9500); }
 
 /* 录音脉冲 */
-.record-pulse-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 .record-pulse {
   width: 80px;
   height: 80px;
@@ -1168,8 +1301,26 @@ export default {
   border-radius: var(--radius-lg, 16px);
   color: var(--text-primary, #000);
 }
+.upload-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--separator-color, #e5e5ea);
+  border-top-color: var(--primary-color, #007aff);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* 加载按钮 */
+.btn-loading {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
 .btn-loading-small {
   width: 16px;
   height: 16px;
@@ -1201,5 +1352,14 @@ export default {
 .toast-fade-enter, .toast-fade-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(20px);
+}
+
+/* 动画 */
+.error-fade-enter-active, .error-fade-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+.error-fade-enter, .error-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 </style>
