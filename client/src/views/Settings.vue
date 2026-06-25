@@ -411,11 +411,15 @@
               </div>
               <div class="about-item">
                 <span class="about-label">版本</span>
-                <span class="about-value">1.0.0</span>
+                <span class="about-value">{{ versionInfo.version }}</span>
+              </div>
+              <div class="about-item">
+                <span class="about-label">构建标识</span>
+                <span class="about-value">{{ versionInfo.buildHash }}</span>
               </div>
               <div class="about-item">
                 <span class="about-label">构建日期</span>
-                <span class="about-value">{{ buildDate }}</span>
+                <span class="about-value">{{ versionInfo.buildTime }}</span>
               </div>
               <div class="about-item">
                 <span class="about-label">前端框架</span>
@@ -518,6 +522,11 @@ export default {
         { key: 'admin', icon: 'fa-solid fa-screwdriver-wrench', label: '系统管理' }
       ],
       buildDate: '',
+      versionInfo: {
+        version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0',
+        buildHash: typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : '',
+        buildTime: typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : ''
+      },
       levelInfo: {
         level: 0,
         exp: 0,
@@ -584,6 +593,7 @@ export default {
       this.startAutoWallpaper();
     }
     this.buildDate = this.getBuildDate();
+    this.fetchVersionInfo();
     this.loadLevelInfo();
     this.avatarColor = localStorage.getItem('avatar_color_' + (this.user && this.user.user_id)) || '';
   },
@@ -841,6 +851,34 @@ export default {
       var m = (now.getMonth() + 1).toString().padStart(2, '0');
       var d = now.getDate().toString().padStart(2, '0');
       return y + '-' + m + '-' + d;
+    },
+    fetchVersionInfo: function() {
+      var self = this;
+      api.get('/system/version')
+        .then(function(response) {
+          var data = response.data && response.data.data;
+          if (data) {
+            self.versionInfo.version = data.version || self.versionInfo.version;
+            self.versionInfo.buildHash = data.buildHash || '';
+            self.versionInfo.buildTime = data.buildTime
+              ? self.formatBuildTime(data.buildTime)
+              : '';
+          }
+        })
+        .catch(function() {
+          // 使用构建时注入的 __APP_VERSION__ 作为回退
+        });
+    },
+    formatBuildTime: function(isoStr) {
+      if (!isoStr) return '';
+      var date = new Date(isoStr);
+      if (isNaN(date.getTime())) return isoStr;
+      var y = date.getFullYear();
+      var m = (date.getMonth() + 1).toString().padStart(2, '0');
+      var d = date.getDate().toString().padStart(2, '0');
+      var h = date.getHours().toString().padStart(2, '0');
+      var min = date.getMinutes().toString().padStart(2, '0');
+      return y + '-' + m + '-' + d + ' ' + h + ':' + min;
     },
     goToAdmin: function() {
       this.$router.push({ name: 'Admin' });

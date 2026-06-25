@@ -7,10 +7,12 @@ import postcss from 'postcss';
 var versionJsonPath = path.resolve(__dirname, '../server/version.json');
 var appVersion = '1.0.0';
 var buildHash = '';
+var buildTime = '';
 try {
   var versionData = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
   appVersion = versionData.version || '1.0.0';
   buildHash = versionData.buildHash || '';
+  buildTime = versionData.buildTime || '';
 } catch (e) {}
 
 function cacheBusterPlugin() {
@@ -125,7 +127,9 @@ export default defineConfig({
     cacheBusterPlugin()
   ],
   define: {
-    '__APP_VERSION__': JSON.stringify(appVersion)
+    '__APP_VERSION__': JSON.stringify(appVersion),
+    '__BUILD_HASH__': JSON.stringify(buildHash),
+    '__BUILD_TIME__': JSON.stringify(buildTime)
   },
   css: {
     postcss: {
