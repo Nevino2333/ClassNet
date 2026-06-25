@@ -414,16 +414,14 @@
                 <span class="about-value">{{ versionInfo.version }}</span>
               </div>
               <div class="about-item">
-                <span class="about-label">构建标识</span>
-                <span class="about-value">{{ versionInfo.buildHash }}</span>
-              </div>
-              <div class="about-item">
-                <span class="about-label">构建日期</span>
-                <span class="about-value">{{ versionInfo.buildTime }}</span>
-              </div>
-              <div class="about-item">
                 <span class="about-label">前端框架</span>
                 <span class="about-value">Vue 2.7 + Vite</span>
+              </div>
+              <div v-if="versionInfo.changelog" class="about-changelog">
+                <div class="about-changelog-title">更新日志</div>
+                <div class="about-changelog-list">
+                  <div v-for="(line, idx) in versionInfo.changelogLines" :key="idx" class="about-changelog-line">{{ line }}</div>
+                </div>
               </div>
               <div class="about-item">
                 <span class="about-label">开发者</span>
@@ -438,6 +436,10 @@
                 <span class="about-value" style="color:var(--primary-color)">{{ officerTitle }}</span>
               </div>
               <div class="about-footer">
+                <button class="btn-outline check-update-btn" @click="checkForUpdate" :disabled="updateChecking">
+                  <i class="fa-solid fa-rotate" :class="{ 'fa-spin': updateChecking }"></i>
+                  {{ updateChecking ? '检查中...' : '检查更新' }}
+                </button>
                 <p class="about-copyright">ClassNet Team. All rights reserved.</p>
               </div>
             </div>
@@ -462,6 +464,7 @@
 <script>
 import api from '@/utils/api';
 import helpers from '@/utils/helpers';
+import updateChecker from '@/utils/update-checker';
 import AppNavBar from '@/components/AppNavBar.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 
@@ -521,11 +524,10 @@ export default {
         { key: 'about', icon: 'fa-solid fa-circle-info', label: '关于系统' },
         { key: 'admin', icon: 'fa-solid fa-screwdriver-wrench', label: '系统管理' }
       ],
-      buildDate: '',
       versionInfo: {
         version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0',
-        buildHash: typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : '',
-        buildTime: typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : ''
+        changelog: '',
+        changelogLines: []
       },
       levelInfo: {
         level: 0,
@@ -542,7 +544,8 @@ export default {
         streak_bonus: 0
       },
       dailyLoginClaimed: false,
-      dailyLoginLoading: false
+      dailyLoginLoading: false,
+      updateChecking: false
     };
   },
   computed: {
@@ -592,7 +595,6 @@ export default {
     if (this.autoWallpaper) {
       this.startAutoWallpaper();
     }
-    this.buildDate = this.getBuildDate();
     this.fetchVersionInfo();
     this.loadLevelInfo();
     this.avatarColor = localStorage.getItem('avatar_color_' + (this.user && this.user.user_id)) || '';
@@ -845,13 +847,6 @@ export default {
         }
       }).catch(function() {});
     },
-    getBuildDate: function() {
-      var now = new Date();
-      var y = now.getFullYear();
-      var m = (now.getMonth() + 1).toString().padStart(2, '0');
-      var d = now.getDate().toString().padStart(2, '0');
-      return y + '-' + m + '-' + d;
-    },
     fetchVersionInfo: function() {
       var self = this;
       api.get('/system/version')
@@ -859,26 +854,49 @@ export default {
           var data = response.data && response.data.data;
           if (data) {
             self.versionInfo.version = data.version || self.versionInfo.version;
-            self.versionInfo.buildHash = data.buildHash || '';
-            self.versionInfo.buildTime = data.buildTime
-              ? self.formatBuildTime(data.buildTime)
-              : '';
+            self.versionInfo.changelog = data.changelog || '';
+            self.versionInfo.changelogLines = self.parseChangelog(data.changelog);
           }
         })
         .catch(function() {
           // 使用构建时注入的 __APP_VERSION__ 作为回退
         });
     },
-    formatBuildTime: function(isoStr) {
-      if (!isoStr) return '';
-      var date = new Date(isoStr);
-      if (isNaN(date.getTime())) return isoStr;
-      var y = date.getFullYear();
-      var m = (date.getMonth() + 1).toString().padStart(2, '0');
-      var d = date.getDate().toString().padStart(2, '0');
-      var h = date.getHours().toString().padStart(2, '0');
-      var min = date.getMinutes().toString().padStart(2, '0');
-      return y + '-' + m + '-' + d + ' ' + h + ':' + min;
+    parseChangelog: function(text) {
+      if (!text) return [];
+      // changelog 是多行文本，按行分割
+      var lines = text.split('\n');
+      var result = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line) result.push(line);
+      }
+      return result;
+    },
+    // 手动检查更新
+    checkForUpdate: function() {
+      var self = this;
+      if (self.updateChecking) return;
+      self.updateChecking = true;
+      updateChecker.checkForUpdate().then(function(result) {
+        self.updateChecking = false;
+        if (result && result.needsUpdate) {
+          self.$store.commit('toast/SHOW_TOAST', {
+            message: '发现新版本 ' + result.serverVersion + '，请刷新页面获取更新',
+            type: 'info'
+          });
+          // 刷新 changelog 显示
+          self.fetchVersionInfo();
+        } else {
+          self.$store.commit('toast/SHOW_TOAST', {
+            message: '已是最新版本 ' + self.versionInfo.version,
+            type: 'success'
+          });
+        }
+      }).catch(function() {
+        self.updateChecking = false;
+        self.$store.commit('toast/SHOW_TOAST', { message: '检查更新失败，请稍后重试', type: 'error' });
+      });
     },
     goToAdmin: function() {
       this.$router.push({ name: 'Admin' });
@@ -1650,11 +1668,53 @@ export default {
   font-weight: var(--font-weight-medium);
 }
 
+/* 更新日志 */
+.about-changelog {
+  padding: 14px 0;
+  border-bottom: 0.5px solid var(--separator-color);
+}
+
+.about-changelog-title {
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: 10px;
+}
+
+.about-changelog-list {
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.about-changelog-line {
+  font-size: var(--font-size-caption);
+  color: var(--text-primary);
+  padding: 4px 0;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.about-changelog-line::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  margin-right: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .about-footer {
   margin-top: 20px;
   text-align: center;
   padding-top: 16px;
   border-top: 0.5px solid var(--separator-color);
+}
+
+.check-update-btn {
+  margin-bottom: 12px;
 }
 
 .about-copyright {
