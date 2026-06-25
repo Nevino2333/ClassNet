@@ -125,7 +125,7 @@ SemVer 的 PATCH 号构建时自动加一，日常完全不碰版本号。新功
 
 ## 仓库地址
 
-GitHub：[Nevino/ClassNet](https://github.com/Nevino/ClassNet)
+GitHub：[Nevino2333/ClassNet](https://github.com/Nevino2333/ClassNet)
 
 ---
 

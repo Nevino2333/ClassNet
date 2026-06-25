@@ -2516,11 +2516,11 @@ export default {
 .results-total { font-size: var(--font-size-sm); color: var(--text-secondary); display: flex; align-items: center; gap: 5px; font-weight: 500; }
 .results-total i { color: var(--primary-color); }
 .results-multi-badge { font-size: var(--font-size-caption2); padding: 3px 10px; border-radius: var(--radius-md); background: rgba(var(--primary-rgb),0.1); color: var(--info-color); font-weight: 600; border: 1px solid rgba(var(--primary-rgb),0.15); }
-.results-voted-badge { font-size: var(--font-size-caption2); padding: 3px 10px; border-radius: var(--radius-md); background: rgba(76,175,80,0.1); color: var(--success-color); font-weight: 600; display: flex; align-items: center; gap: 4px; border: 1px solid rgba(76,175,80,0.15); }
+.results-voted-badge { font-size: var(--font-size-caption2); padding: 3px 10px; border-radius: var(--radius-md); background: rgba(var(--success-rgb),0.1); color: var(--success-color); font-weight: 600; display: flex; align-items: center; gap: 4px; border: 1px solid rgba(var(--success-rgb),0.15); }
 .results-poll-item { position: relative; margin-bottom: 10px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-color); border: 2px solid var(--border-color); transition: all 0.25s; }
 .results-poll-item:hover { border-color: var(--primary-color); }
 .results-poll-item.results-leading { border-color: rgba(var(--primary-rgb),0.25); background: rgba(var(--primary-rgb),0.02); }
-.results-poll-item.results-my-vote { border-color: rgba(76,175,80,0.35); background: rgba(76,175,80,0.02); }
+.results-poll-item.results-my-vote { border-color: rgba(var(--success-rgb),0.35); background: rgba(var(--success-rgb),0.02); }
 .results-poll-bar-wrap { height: 38px; position: relative; }
 .results-poll-bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(var(--primary-rgb),0.08); border-radius: var(--radius-md); transition: width 0.7s cubic-bezier(0, 0, 0.2, 1); }
 .results-leading .results-poll-bar { background: rgba(var(--primary-rgb),0.15); }
@@ -3157,8 +3157,8 @@ export default {
 .markdown-body >>> .latex-Huge        { font-size: 2.5em; }
 
 .markdown-body >>> .latex-error {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
+  color: var(--danger-color, #FF3B30);
+  background: rgba(var(--danger-rgb, 255, 59, 48), 0.1);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
   font-size: var(--font-size-sm);

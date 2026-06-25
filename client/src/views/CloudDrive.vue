@@ -384,7 +384,7 @@ export default {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--accent-color);
+  background: var(--accent-resource, #5856D6);
   animation: pulse 1s infinite;
 }
 @keyframes pulse {
@@ -406,7 +406,7 @@ export default {
 .upload-btn {
   margin-top: 16px;
   padding: 10px 24px;
-  background: var(--accent-color);
+  background: var(--accent-resource, #5856D6);
   color: #fff;
   border: none;
   border-radius: var(--radius-md);
@@ -560,7 +560,7 @@ export default {
   width: 20px;
   height: 20px;
   border: 2px solid var(--separator-color);
-  border-top-color: var(--accent-color);
+  border-top-color: var(--accent-resource, #5856D6);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

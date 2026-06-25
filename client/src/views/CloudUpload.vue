@@ -592,6 +592,7 @@ export default {
       var self = this;
       if (!self.audioBlob) return;
       self.uploading = true;
+      self.uploadProgress = 0;
       var ext = extFromMime(self.audioBlob.type);
       var filename = 'recording_' + Date.now() + ext;
       var file = new File([self.audioBlob], filename, { type: self.audioBlob.type });
@@ -599,14 +600,22 @@ export default {
       formData.append('file', file);
       api.post('/cloud/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000
+        timeout: 120000,
+        onUploadProgress: function(e) {
+          if (e.lengthComputable) {
+            self.uploadProgress = Math.round((e.loaded / e.total) * 100);
+          }
+        }
       }).then(function() {
         self.uploading = false;
+        self.uploadProgress = 0;
         self.showToast('录音上传成功', 'success');
         self.resetAudio();
-      }).catch(function() {
+      }).catch(function(err) {
         self.uploading = false;
-        self.showToast('上传失败，请重试', 'error');
+        self.uploadProgress = 0;
+        var msg = (err.response && err.response.data && err.response.data.message) || '上传失败，请重试';
+        self.showToast(msg, 'error');
       });
     },
 
@@ -744,6 +753,7 @@ export default {
       var self = this;
       if (!self.videoBlob) return;
       self.uploading = true;
+      self.uploadProgress = 0;
       var ext = extFromMime(self.videoBlob.type);
       var filename = 'video_' + Date.now() + ext;
       var file = new File([self.videoBlob], filename, { type: self.videoBlob.type });
@@ -751,14 +761,22 @@ export default {
       formData.append('file', file);
       api.post('/cloud/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000
+        timeout: 300000,
+        onUploadProgress: function(e) {
+          if (e.lengthComputable) {
+            self.uploadProgress = Math.round((e.loaded / e.total) * 100);
+          }
+        }
       }).then(function() {
         self.uploading = false;
+        self.uploadProgress = 0;
         self.showToast('视频上传成功', 'success');
         self.resetVideo();
-      }).catch(function() {
+      }).catch(function(err) {
         self.uploading = false;
-        self.showToast('上传失败，请重试', 'error');
+        self.uploadProgress = 0;
+        var msg = (err.response && err.response.data && err.response.data.message) || '上传失败，请重试';
+        self.showToast(msg, 'error');
       });
     },
 
@@ -1038,6 +1056,13 @@ export default {
 }
 .record-timer.recording { color: var(--danger-color, #ff3b30); }
 .record-timer.paused { color: var(--warning-color, #ff9500); }
+
+/* 录音波形 */
+.audio-waveform {
+  width: 100%;
+  max-width: 320px;
+  height: 80px;
+}
 
 /* 录音脉冲 */
 .record-pulse-wrap {
@@ -1321,6 +1346,20 @@ export default {
   background: var(--card-bg, #fff);
   border-radius: var(--radius-lg, 16px);
   color: var(--text-primary, #000);
+  min-width: 200px;
+}
+.upload-progress-bar {
+  width: 200px;
+  height: 6px;
+  background: var(--separator-color, #e5e5ea);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.upload-progress-fill {
+  height: 100%;
+  background: var(--primary-color, #007aff);
+  border-radius: 3px;
+  transition: width 0.3s var(--ease-standard, ease);
 }
 
 /* 加载按钮 */

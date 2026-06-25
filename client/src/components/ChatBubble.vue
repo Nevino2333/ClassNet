@@ -640,6 +640,10 @@ export default {
   background: rgba(0, 0, 0, 0.03);
   border-radius: 0 6px 6px 0;
 }
+/* 深色模式下对方气泡(深灰底)用半透明白，避免与气泡融为一片 */
+[data-theme="dark"] .forward-card {
+  background: rgba(255, 255, 255, 0.06);
+}
 
 .own-bubble .forward-card {
   background: rgba(255, 255, 255, 0.1);
@@ -766,6 +770,10 @@ export default {
   cursor: pointer;
   transition: background 0.15s;
 }
+/* 深色模式下对方气泡引用块用半透明白 */
+[data-theme="dark"] .reply-quote {
+  background: rgba(255, 255, 255, 0.08);
+}
 
 .own-bubble .reply-quote {
   background: rgba(255, 255, 255, 0.15);
@@ -774,6 +782,9 @@ export default {
 
 .reply-quote:hover {
   background: rgba(0, 0, 0, 0.1);
+}
+[data-theme="dark"] .reply-quote:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .own-bubble .reply-quote:hover {

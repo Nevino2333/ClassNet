@@ -3595,8 +3595,8 @@ export default {
 }
 
 .msg-checkbox.checked {
-  background: var(--accent-color, #007aff);
-  border-color: var(--accent-color, #007aff);
+  background: var(--primary-color, #007aff);
+  border-color: var(--primary-color, #007aff);
   color: #fff;
 }
 
@@ -3646,9 +3646,9 @@ export default {
 }
 
 .batch-btn-primary {
-  background: var(--accent-color, #007aff);
+  background: var(--primary-color, #007aff);
   color: #fff;
-  border-color: var(--accent-color, #007aff);
+  border-color: var(--primary-color, #007aff);
 }
 
 .batch-btn-primary:disabled {
