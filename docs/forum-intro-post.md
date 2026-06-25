@@ -1,21 +1,21 @@
 [center]
 [size=24][b][color=#007AFF]ClassNet[/color][/b][/size]
-[size=14]—— 自建智慧校园平台，班级的数字化中枢 ——[/size]
+[size=14]—— 一款班级局域网Web交互系统 ——[/size]
 [/center]
 
 [center][quote]一个班级里能用到的一切——聊天、AI 助手、社区论坛、云盘、笔记、天气、音乐——全在一个网页里。[/quote][/center]
 
----
+
 
 [size=18][b]为什么做这个？[/b][/size]
 
-学校给我们班配了学生平板。但说实话，这些设备除了看看课件、刷刷题，几乎没有 [b]"班级自己的东西"[/b]——聊天用 QQ、交作业用微信、文件传来传去靠 U 盘。功能割裂、数据散落、体验割裂。
+学校给我们提供了学生平板。但说实话，这些设备除了看看课件、刷刷题，几乎没有 [b]"班级自己的东西"[/b]——聊天用 QQ、交作业用微信、文件传来传去靠 U 盘。功能割裂、数据散落、体验割裂。
 
 我就想：能不能把这些平板真正利用起来？搭一个 [b][color=#007AFF]班级专属的一体化平台[/color][/b]，聊天、AI、论坛、云盘、笔记、天气、音乐全在同一个网页里，平板打开浏览器就能用。
 
 于是从零开始写了 [b]ClassNet[/b]。前后两个多月，AI 辅助 coding，一个人全栈。
 
----
+
 
 [size=18][b]能干什么？[/b][/size]
 
@@ -82,7 +82,7 @@
 [*]新版本桌面角标提示 + 更新介绍
 [/list]
 
----
+
 
 [size=18][b]技术栈[/b][/size]
 
@@ -101,7 +101,7 @@
 [tr][td]认证[/td][td]bcryptjs + JWT（jose）[/td][/tr]
 [/table]
 
----
+
 
 [size=18][b][color=#FF9500]征集 Logo！[/color][/b][/size]
 
@@ -119,7 +119,7 @@
 
 [ASUCCESS]选中了署上你的名字，写在项目 About 里！[/ASUCCESS]
 
----
+
 
 [size=18][b]开发心得[/b][/size]
 
@@ -138,13 +138,13 @@ SemVer 的 PATCH 号构建时自动 +1，日常完全不碰版本号。新功能
 班级场景 50 人以内，SQLite 完全够用。零配置，备份就是一个文件复制。
 [/ABASIC]
 
----
+
 
 [size=18][b]仓库地址[/b][/size]
 
 [cloud type=github title=ClassNet url=https://github.com/Nevino2333/ClassNet]GitHub 仓库[/cloud]
 
----
+
 
 [size=18][b]后续计划[/b][/size]
 
@@ -154,7 +154,7 @@ SemVer 的 PATCH 号构建时自动 +1，日常完全不碰版本号。新功能
 [*]Docker 一键部署
 [/list]
 
----
+
 
 [center]
 [BSUCCESS][size=16]欢迎 Star / Fork / 提 Issue！[/size][/BSUCCESS]
