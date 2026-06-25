@@ -1220,6 +1220,13 @@ export default {
 .record-timer.recording { color: var(--danger-color, #ff3b30); }
 .record-timer.paused { color: var(--warning-color, #ff9500); }
 
+/* 录音波形 */
+.audio-waveform {
+  width: 100%;
+  max-width: 320px;
+  height: 80px;
+}
+
 /* 录音脉冲 */
 .record-pulse-wrap {
   position: relative;

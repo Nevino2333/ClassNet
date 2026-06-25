@@ -82,6 +82,7 @@
         <div class="record-timer" :class="{ recording: audioRecording, paused: audioPaused }">
           {{ formatTime(recordSeconds) }}
         </div>
+        <canvas ref="audioWaveform" class="audio-waveform" width="600" height="80"></canvas>
         <div class="record-pulse-wrap">
           <div class="record-pulse" :class="{ active: audioRecording && !audioPaused }"></div>
           <button class="record-btn" :class="{ recording: audioRecording }" @click="toggleAudioRecord">
@@ -173,8 +174,11 @@
     <!-- 上传遮罩 -->
     <div v-if="uploading && mode !== 'file'" class="upload-overlay">
       <div class="upload-progress-box">
-        <div class="upload-spinner"></div>
-        <span>正在上传...</span>
+        <div v-if="uploadProgress > 0" class="upload-progress-bar">
+          <div class="upload-progress-fill" :style="{ width: uploadProgress + '%' }"></div>
+        </div>
+        <div v-else class="upload-spinner"></div>
+        <span>{{ uploadProgress > 0 ? '上传中 ' + uploadProgress + '%' : '正在上传...' }}</span>
       </div>
     </div>
 
@@ -258,6 +262,7 @@ export default {
       mode: 'file',
       uploading: false,
       uploaded: false,
+      uploadProgress: 0,
       toastMsg: '',
       toastType: 'success',
       toastTimer: null,
@@ -271,6 +276,9 @@ export default {
       audioRecorder: null,
       audioChunks: [],
       audioStream: null,
+      audioAnalyser: null,
+      audioContext: null,
+      waveformRaf: null,
       // 录像
       videoRecording: false,
       videoPaused: false,
@@ -440,6 +448,19 @@ export default {
       navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
         self.audioStream = stream;
         self.audioChunks = [];
+        // 创建 AnalyserNode 用于波形可视化
+        try {
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            self.audioContext = new AudioCtx();
+            var source = self.audioContext.createMediaStreamSource(stream);
+            var analyser = self.audioContext.createAnalyser();
+            analyser.fftSize = 128;
+            analyser.smoothingTimeConstant = 0.7;
+            source.connect(analyser);
+            self.audioAnalyser = analyser;
+          }
+        } catch (e) {}
         var mime = pickMimeTypes('audio');
         var options = {};
         if (mime) options.mimeType = mime;
@@ -461,11 +482,15 @@ export default {
         self.audioPaused = false;
         self.recordSeconds = 0;
         self.startTimer();
+        self.$nextTick(function() {
+          self.startWaveform();
+        });
       }).catch(function(err) {
         self.showToast(self.getMediaError(err), 'error');
       });
     },
     stopAudioRecord: function() {
+      this.stopWaveform();
       if (this.audioRecorder && this.audioRecorder.state !== 'inactive') {
         this.audioRecorder.stop();
       }
@@ -479,13 +504,60 @@ export default {
         this.audioRecorder.resume();
         this.audioPaused = false;
         this.startTimer();
+        this.startWaveform();
       } else {
         this.audioRecorder.pause();
         this.audioPaused = true;
         this.stopTimer();
+        this.stopWaveform();
+      }
+    },
+    // 波形可视化绘制
+    startWaveform: function() {
+      var self = this;
+      if (!self.audioAnalyser) return;
+      var canvas = self.$refs.audioWaveform;
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var bufferLength = self.audioAnalyser.frequencyBinCount;
+      var dataArray = new Uint8Array(bufferLength);
+
+      function draw() {
+        if (!self.audioAnalyser || !self.audioRecording || self.audioPaused) {
+          return;
+        }
+        self.waveformRaf = requestAnimationFrame(draw);
+        self.audioAnalyser.getByteFrequencyData(dataArray);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var barCount = Math.min(bufferLength, 48);
+        var gap = 2;
+        var barWidth = (canvas.width - gap * (barCount - 1)) / barCount;
+        for (var i = 0; i < barCount; i++) {
+          var value = dataArray[i];
+          var barHeight = Math.max(2, (value / 255) * canvas.height);
+          var x = i * (barWidth + gap);
+          var y = (canvas.height - barHeight) / 2;
+          var alpha = 0.4 + (value / 255) * 0.6;
+          ctx.fillStyle = self.audioPaused ? 'rgba(255, 149, 0, ' + alpha + ')'
+                                            : 'rgba(255, 59, 48, ' + alpha + ')';
+          ctx.fillRect(x, y, barWidth, barHeight);
+        }
+      }
+      draw();
+    },
+    stopWaveform: function() {
+      if (this.waveformRaf) {
+        cancelAnimationFrame(this.waveformRaf);
+        this.waveformRaf = null;
+      }
+      var canvas = this.$refs.audioWaveform;
+      if (canvas) {
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     },
     resetAudio: function() {
+      this.stopWaveform();
       if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
       this.audioBlob = null;
       this.audioUrl = '';
@@ -503,10 +575,16 @@ export default {
     },
     cleanupAudio: function() {
       this.stopTimer();
+      this.stopWaveform();
       if (this.audioRecorder && this.audioRecorder.state !== 'inactive') {
         try { this.audioRecorder.stop(); } catch (e) {}
       }
       this.cleanupAudioStream();
+      if (this.audioContext) {
+        try { this.audioContext.close(); } catch (e) {}
+        this.audioContext = null;
+      }
+      this.audioAnalyser = null;
       this.audioRecording = false;
       this.audioPaused = false;
     },
