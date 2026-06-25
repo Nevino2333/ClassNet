@@ -370,6 +370,15 @@
                   </div>
                 </div>
               </template>
+              <div class="form-row">
+                <label class="form-label">
+                  <i class="fa-solid fa-id-card form-row-icon"></i>在社区显示真实姓名
+                </label>
+                <label class="switch">
+                  <input type="checkbox" v-model="privacyCustomize.showRealName" @change="savePrivacyCustomize" />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -418,18 +427,14 @@
                 <span class="about-value">Vue 2.7 + Vite</span>
               </div>
               <div v-if="versionInfo.changelog" class="about-changelog">
-                <div class="about-changelog-title">更新日志</div>
+                <div class="about-changelog-title">更新介绍</div>
                 <div class="about-changelog-list">
                   <div v-for="(line, idx) in versionInfo.changelogLines" :key="idx" class="about-changelog-line">{{ line }}</div>
                 </div>
               </div>
               <div class="about-item">
                 <span class="about-label">开发者</span>
-                <span class="about-value">ClassNet Team</span>
-              </div>
-              <div class="about-item">
-                <span class="about-label">联系方式</span>
-                <span class="about-value">classnet@example.com</span>
+                <span class="about-value">Nevino</span>
               </div>
               <div v-if="isOfficer && officerTitle" class="about-item">
                 <span class="about-label">我的头衔</span>
@@ -440,7 +445,7 @@
                   <i class="fa-solid fa-rotate" :class="{ 'fa-spin': updateChecking }"></i>
                   {{ updateChecking ? '检查中...' : '检查更新' }}
                 </button>
-                <p class="about-copyright">ClassNet Team. All rights reserved.</p>
+                <p class="about-copyright">Nevino. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -545,7 +550,10 @@ export default {
       },
       dailyLoginClaimed: false,
       dailyLoginLoading: false,
-      updateChecking: false
+      updateChecking: false,
+      privacyCustomize: {
+        showRealName: true  // 默认在社区显示真实姓名
+      }
     };
   },
   computed: {
@@ -673,6 +681,8 @@ export default {
             self.profileForm.qq_private = privacy.qq !== false;
             self.profileForm.phone_private = privacy.phone !== false;
             self.profileForm.address_private = privacy.address !== false;
+            // 真实姓名显示设置：hide_real_name=true 时关闭开关
+            self.privacyCustomize.showRealName = !privacy.hide_real_name;
           }
         })
         .catch(function() {
@@ -770,6 +780,20 @@ export default {
         var nextIdx = (idx + 1) % allWallpapers.length;
         self.$store.commit('settings/SET_WALLPAPER', allWallpapers[nextIdx]);
       }, 30000);
+    },
+    savePrivacyCustomize: function() {
+      var self = this;
+      api.put('/community/profile', {
+        privacy_settings: {
+          hide_real_name: !self.privacyCustomize.showRealName
+        }
+      }).then(function() {
+        self.$store.commit('toast/SHOW_TOAST', { message: '隐私设置已保存', type: 'success' });
+      }).catch(function() {
+        self.$store.commit('toast/SHOW_TOAST', { message: '保存失败，请重试', type: 'error' });
+        // 回滚开关状态
+        self.privacyCustomize.showRealName = !self.privacyCustomize.showRealName;
+      });
     },
     saveNotifications: function() {
       var self = this;

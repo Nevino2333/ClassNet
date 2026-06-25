@@ -44,7 +44,7 @@
                 @click="selectChat(group.group_id)"
               >
                 <div class="chat-item-avatar-wrap">
-                  <div class="chat-item-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ (group.group_name || '?').charAt(0) }}</div>
+                  <div class="chat-item-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ firstChar(group.group_name) }}</div>
                 </div>
                 <div class="chat-item-info">
                   <div class="chat-item-name">
@@ -78,7 +78,7 @@
                 @click="selectChat(contact.user_id)"
               >
                 <div class="chat-item-avatar-wrap">
-                  <div class="chat-item-avatar" :style="{ background: getAvatarColor(contact.user_id) }">{{ (getContactDisplayName(contact) || '?').charAt(0) }}</div>
+                  <div class="chat-item-avatar" :style="{ background: getAvatarColor(contact.user_id) }">{{ firstChar(getContactDisplayName(contact)) }}</div>
                   <div v-if="isUserOnline(contact.user_id)" class="chat-item-online-dot"></div>
                 </div>
                 <div class="chat-item-info">
@@ -105,7 +105,7 @@
                 @click="selectChat(group.group_id)"
               >
                 <div class="chat-item-avatar-wrap">
-                  <div class="chat-item-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ (group.group_name || '?').charAt(0) }}</div>
+                  <div class="chat-item-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ firstChar(group.group_name) }}</div>
                 </div>
                 <div class="chat-item-info">
                   <div class="chat-item-name">
@@ -295,7 +295,7 @@
             <div class="member-select-list scrollbar-thin">
               <label v-for="contact in contacts" :key="contact.user_id" class="member-select-item">
                 <input type="checkbox" :value="contact.user_id" v-model="newGroupMembers" />
-                <div class="member-select-avatar">{{ (contact.net_name || '?').charAt(0) }}</div>
+                <div class="member-select-avatar">{{ firstChar(contact.net_name) }}</div>
                 <span class="member-select-name">{{ contact.net_name }}</span>
               </label>
               <div v-if="contacts.length === 0" class="empty-hint">暂无联系人</div>
@@ -331,7 +331,7 @@
             <div class="member-list">
               <div v-for="member in currentGroupMembers" :key="member.user_id" class="member-item">
                 <div class="member-avatar-wrap">
-                  <div class="member-avatar">{{ (member.net_name || member.real_name || '?').charAt(0) }}</div>
+                  <div class="member-avatar">{{ firstChar(member.net_name || member.real_name) }}</div>
                   <div v-if="isUserOnline(member.user_id)" class="member-online-dot"></div>
                 </div>
                 <span class="member-name">{{ member.net_name || member.real_name || member.user_id }}</span>
@@ -410,7 +410,7 @@
         <div class="settings-body">
           <div class="settings-section">
             <div class="settings-user-card" v-if="currentPrivateContact">
-              <div class="settings-user-avatar" :style="{ background: getAvatarColor(currentChat) }">{{ (getContactDisplayName(currentPrivateContact) || '?').charAt(0) }}</div>
+              <div class="settings-user-avatar" :style="{ background: getAvatarColor(currentChat) }">{{ firstChar(getContactDisplayName(currentPrivateContact)) }}</div>
               <div class="settings-user-info">
                 <div class="settings-user-name">{{ getContactDisplayName(currentPrivateContact) }}</div>
                 <div v-if="friendRemarks[currentChat]" class="settings-user-realname">{{ currentPrivateContact.net_name || currentPrivateContact.real_name }}</div>
@@ -485,7 +485,7 @@
           <div class="member-select-list scrollbar-thin" style="max-height: 300px;">
             <label v-for="contact in availableInviteContacts" :key="contact.user_id" class="member-select-item">
               <input type="checkbox" :value="contact.user_id" v-model="inviteUserIds" />
-              <div class="member-select-avatar">{{ (contact.net_name || '?').charAt(0) }}</div>
+              <div class="member-select-avatar">{{ firstChar(contact.net_name) }}</div>
               <span class="member-select-name">{{ contact.net_name }}</span>
             </label>
             <div v-if="availableInviteContacts.length === 0" class="empty-hint">没有可邀请的联系人</div>
@@ -511,7 +511,7 @@
               class="member-select-item member-select-item-clickable"
               @click="confirmTransfer(member.user_id)"
             >
-              <div class="member-select-avatar">{{ (member.net_name || member.real_name || '?').charAt(0) }}</div>
+              <div class="member-select-avatar">{{ firstChar(member.net_name || member.real_name) }}</div>
               <span class="member-select-name">{{ member.net_name || member.real_name || member.user_id }}</span>
             </div>
             <div v-if="transferableMembers.length === 0" class="empty-hint">没有可转让的成员</div>
@@ -581,7 +581,7 @@
               </div>
             </div>
             <div v-for="group in classGroups" :key="'fcg-' + group.group_id" class="forward-target-item" @click="sendForwardTo(group.group_id)">
-              <div class="forward-target-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ (group.group_name || '?').charAt(0) }}</div>
+              <div class="forward-target-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ firstChar(group.group_name) }}</div>
               <div class="forward-target-info">
                 <div class="forward-target-name">{{ group.group_name }}</div>
                 <div class="forward-target-desc">{{ group.member_count || 0 }} 人</div>
@@ -589,7 +589,7 @@
             </div>
             <div v-if="nonClassGroups.length > 0" class="forward-target-section">群聊</div>
             <div v-for="group in nonClassGroups" :key="'fg-' + group.group_id" class="forward-target-item" @click="sendForwardTo(group.group_id)">
-              <div class="forward-target-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ (group.group_name || '?').charAt(0) }}</div>
+              <div class="forward-target-avatar" :style="{ background: getGroupColor(group.group_id) }">{{ firstChar(group.group_name) }}</div>
               <div class="forward-target-info">
                 <div class="forward-target-name">{{ group.group_name }}</div>
                 <div class="forward-target-desc">{{ group.member_count || 0 }} 人</div>
@@ -597,7 +597,7 @@
             </div>
             <div v-if="contacts.length > 0" class="forward-target-section">私聊</div>
             <div v-for="contact in contacts" :key="'fc-' + contact.user_id" class="forward-target-item" @click="sendForwardTo(contact.user_id)">
-              <div class="forward-target-avatar" :style="{ background: getAvatarColor(contact.user_id) }">{{ (getContactDisplayName(contact) || '?').charAt(0) }}</div>
+              <div class="forward-target-avatar" :style="{ background: getAvatarColor(contact.user_id) }">{{ firstChar(getContactDisplayName(contact)) }}</div>
               <div class="forward-target-info">
                 <div class="forward-target-name">{{ getContactDisplayName(contact) }}</div>
                 <div v-if="isUserOnline(contact.user_id)" class="forward-target-desc online-desc">在线</div>
@@ -1091,6 +1091,11 @@ export default {
     }
   },
   methods: {
+    // 安全获取字符串首字符（支持 emoji / 数学粗体等代理对字符）
+    firstChar: function(str) {
+      var chars = Array.from(str || '?');
+      return chars[0] || '?';
+    },
     onDocumentClick: function() {
       if (this.showContextMenu) {
         this.closeContextMenu();

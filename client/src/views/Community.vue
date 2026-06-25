@@ -310,7 +310,7 @@
             <div class="profile-card" v-if="currentUser">
               <div class="profile-card-left">
                 <div class="profile-card-avatar" :style="{ background: getAvatarColor(currentUser.user_id) }">
-                  {{ (currentUser.net_name || '?').charAt(0) }}
+                  {{ getAvatarText(currentUser.net_name) }}
                 </div>
                 <div class="profile-card-info">
                   <div class="profile-card-name">{{ currentUser.net_name }}</div>
@@ -986,7 +986,7 @@
         <button class="modal-close" @click="closeUserCard"><i class="fa-solid fa-xmark"></i></button>
         <div class="user-card">
           <div class="user-card-avatar" :style="{ background: getAvatarColor(userCardUserId) }">
-            {{ (userProfile.net_name || '?').charAt(0) }}
+            {{ getAvatarText(userProfile.net_name) }}
           </div>
           <h3 class="user-card-name">{{ userProfile.net_name || '未知用户' }}</h3>
           <div v-if="userProfile.real_name" class="user-card-realname">{{ userProfile.real_name }}</div>
@@ -1726,7 +1726,9 @@ export default {
     },
     getAvatarText: function(post) {
       if (post.is_anonymous) return '?';
-      return (post.net_name || '?').charAt(0);
+      var name = post.net_name || '?';
+      var chars = Array.from(name);
+      return chars[0] || '?';
     },
     isPostOwner: function(post) {
       var user = this.currentUser;
