@@ -1,5 +1,5 @@
 <template>
-  <div class="draw-canvas" :class="'draw-canvas--' + mode" ref="root">
+  <div class="draw-canvas" :class="['draw-canvas--' + mode, { 'is-annotating': annotating }]" ref="root">
     <!-- ================================================================== -->
     <!--  全屏画板模式：左侧纵向工具条 + 右侧画布区                         -->
     <!-- ================================================================== -->
@@ -1078,6 +1078,7 @@ export default {
 
     finishAnnotation: function() {
       this.annotating = false;
+      this.$emit('drawing', false);
       var data = this.getData();
       this.$emit('save', data);
     },
@@ -1087,6 +1088,15 @@ export default {
       this.activeTool = toolId;
       if (this.mode === 'annotation') {
         this.annotating = true;
+        this.$emit('drawing', true);
+      }
+    }
+  },
+
+  watch: {
+    annotating: function(val) {
+      if (this.mode === 'annotation') {
+        this.$emit('drawing', val);
       }
     }
   },
@@ -1109,6 +1119,14 @@ export default {
   background: var(--bg-color);
   user-select: none;
   -webkit-user-select: none;
+}
+
+.draw-canvas--annotation {
+  background: transparent !important;
+}
+
+.draw-canvas--annotation .dc-anno-toolbar {
+  pointer-events: auto;
 }
 
 /* ========== 全屏模式：左右布局 ========== */

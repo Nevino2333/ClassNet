@@ -13,12 +13,12 @@
             <i class="fa-solid fa-plus"></i>
           </button>
           <transition name="dropdown-fade">
-            <div v-if="showCreateMenu" class="create-menu" @click.stop>
-              <button class="create-menu-item" @click="createNoteFile; showCreateMenu = false">
+            <div v-if="showCreateMenu" class="create-menu">
+              <button class="create-menu-item" @click="createNoteFile(); showCreateMenu = false">
                 <i class="fa-regular fa-note-sticky"></i>
                 <span>新建笔记</span>
               </button>
-              <button class="create-menu-item" @click="createDrawFile; showCreateMenu = false">
+              <button class="create-menu-item" @click="createDrawFile(); showCreateMenu = false">
                 <i class="fa-solid fa-palette"></i>
                 <span>新建画板</span>
               </button>
@@ -347,13 +347,14 @@
           ></div>
 
           <!-- 批注涂鸦层：直接覆盖在文字上 -->
-          <div v-if="showAnnotationLayer" class="annotation-overlay">
+          <div v-if="showAnnotationLayer" class="annotation-overlay" :class="{ 'annotation-active': annoDrawing }" @touchmove.prevent>
             <DrawCanvas
               ref="annotationCanvas"
               mode="annotation"
               :key="'anno_' + activeFileId"
               :initialLayers="activeFile.canvasData || []"
               @save="onAnnotationSave"
+              @drawing="annoDrawing = $event"
             />
           </div>
         </div>
@@ -1310,6 +1311,7 @@ export default {
       showCanvasModal: false,
       showCreateMenu: false,
       showAnnotationLayer: false,
+      annoDrawing: false,
       annotationInput: '',
       annotationColor: '#ffc107',
       canvasTool: 'brush',
@@ -5486,6 +5488,12 @@ export default {
   bottom: 0;
   z-index: 10;
   overflow: hidden;
+  pointer-events: none;
+  background: transparent;
+}
+
+.annotation-overlay.annotation-active {
+  pointer-events: auto;
 }
 
 .annotation-cards-section {
