@@ -270,7 +270,10 @@ export default {
 
 <style scoped>
 .cloud-drive {
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-color);
 }
 .nav-action-btn {
@@ -290,7 +293,10 @@ export default {
 .nav-action-btn:hover { background: var(--primary-light); }
 .nav-action-btn:active { transform: scale(0.92); opacity: 0.7; }
 .cloud-content {
+  flex: 1;
+  overflow-y: auto;
   padding: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 上传码卡片 */
