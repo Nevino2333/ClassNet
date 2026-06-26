@@ -296,58 +296,40 @@ export default {
   methods: {
     onContentClick: function(e) {
       var target = e.target;
-      while (target && target !== e.currentTarget) {
-        // 跳过视频/音频控件点击（让浏览器处理播放/暂停等）
-        if (target.tagName === 'VIDEO' || target.tagName === 'AUDIO') return;
-        // 跳过播放按钮
-        if (target.classList && target.classList.contains('msg-media-play')) {
-          // 点击播放按钮 → 打开全屏预览
-          e.preventDefault();
-          e.stopPropagation();
-          var wrapper = target.closest('.msg-media-wrapper');
-          if (wrapper) {
-            var mediaEl = wrapper.querySelector('.msg-media');
-            if (mediaEl) {
-              var mediaUrl = mediaEl.getAttribute('data-media-url');
-              if (mediaUrl) {
-                this.$emit('preview-media', { url: mediaUrl, type: mediaEl.getAttribute('data-media-type') });
-              }
-            }
-          }
-          return;
+      // 语音条点击 → 切换播放（不触发全屏预览）
+      var voiceBar = target.closest && target.closest('.msg-voice-bar');
+      if (voiceBar) {
+        e.preventDefault();
+        e.stopPropagation();
+        var voiceUrl = voiceBar.getAttribute('data-media-url');
+        if (voiceUrl) {
+          this.toggleVoicePlay(voiceUrl, voiceBar);
         }
-        // 语音条点击 → 切换播放（不触发全屏预览）
-        var voiceBar = target.closest && target.closest('.msg-voice-bar');
-        if (voiceBar) {
-          e.preventDefault();
-          e.stopPropagation();
-          var voiceUrl = voiceBar.getAttribute('data-media-url');
-          if (voiceUrl) {
-            this.toggleVoicePlay(voiceUrl, voiceBar);
-          }
-          return;
+        return;
+      }
+      // 视频/图片媒体点击 → 全屏预览（向上查找 msg-media 包裹器）
+      var mediaEl = target.closest ? target.closest('.msg-media') : null;
+      if (!mediaEl && target.classList && target.classList.contains('msg-media')) {
+        mediaEl = target;
+      }
+      if (mediaEl && !mediaEl.classList.contains('msg-voice-bar')) {
+        e.preventDefault();
+        e.stopPropagation();
+        var mediaUrl = mediaEl.getAttribute('data-media-url');
+        var mediaType = mediaEl.getAttribute('data-media-type') || 'image';
+        if (mediaUrl) {
+          this.$emit('preview-media', { url: mediaUrl, type: mediaType });
         }
-        // 处理媒体元素点击 → 全屏预览（视频/图片通用）
-        if (target.classList && target.classList.contains('msg-media')) {
-          e.preventDefault();
-          e.stopPropagation();
-          var mediaUrl = target.getAttribute('data-media-url');
-          var mediaType = target.getAttribute('data-media-type') || 'image';
-          if (mediaUrl) {
-            this.$emit('preview-media', { url: mediaUrl, type: mediaType });
-          }
-          return;
+        return;
+      }
+      // 处理链接点击
+      if (target.tagName === 'A' && target.getAttribute('data-external') === 'true') {
+        e.preventDefault();
+        var href = target.getAttribute('href');
+        if (href) {
+          this.$router.push('/browser?url=' + encodeURIComponent(href));
         }
-        // 处理链接点击
-        if (target.tagName === 'A' && target.getAttribute('data-external') === 'true') {
-          e.preventDefault();
-          var href = target.getAttribute('href');
-          if (href) {
-            this.$router.push('/browser?url=' + encodeURIComponent(href));
-          }
-          return;
-        }
-        target = target.parentNode;
+        return;
       }
     },
     // 初始化未绑定的语音条：创建 Audio 对象，绑定事件
@@ -555,8 +537,8 @@ export default {
         if (item.type === 'image') {
           mediaHtml = '<img class="msg-image msg-media" data-media-url="' + escapedUrl + '" data-media-type="image" src="' + escapedUrl + '" alt="图片" loading="lazy" />';
         } else if (item.type === 'video') {
-          mediaHtml = '<div class="msg-media-wrapper msg-video-wrapper">' +
-            '<video class="msg-video msg-media" data-media-url="' + escapedUrl + '" data-media-type="video" src="' + escapedUrl + '" preload="metadata" controls></video>' +
+          mediaHtml = '<div class="msg-media-wrapper msg-video-wrapper msg-media" data-media-url="' + escapedUrl + '" data-media-type="video">' +
+            '<video class="msg-video" data-media-url="' + escapedUrl + '" data-media-type="video" src="' + escapedUrl + '" preload="metadata" playsinline muted></video>' +
             '<div class="msg-media-play"><i class="fa-solid fa-play"></i></div>' +
             '</div>';
         } else if (item.type === 'audio') {
