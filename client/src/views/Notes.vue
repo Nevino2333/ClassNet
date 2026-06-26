@@ -234,7 +234,7 @@
             <button class="toolbar-btn" @click="insertMarkdown('link')" title="链接">
               <i class="fa-solid fa-link"></i>
             </button>
-            <button class="toolbar-btn" @click="insertMarkdown('image')" title="图片">
+            <button class="toolbar-btn" @click="openCloudImagePicker" title="从云盘插入图片/音视频">
               <i class="fa-solid fa-image"></i>
             </button>
             <button class="toolbar-btn" @click="insertMarkdown('quote')" title="引用">
@@ -972,6 +972,9 @@
       <div class="cloud-note-fullscreen-content markdown-body" v-html="renderMarkdown(viewingCloudNote.content || '')"></div>
     </div>
 
+    <!-- 云盘图片/音视频选择器 -->
+    <CloudImagePicker v-if="showCloudPicker" @select="onCloudImageSelect" @close="showCloudPicker = false" />
+
   </div>
 </template>
 
@@ -985,6 +988,7 @@ import 'highlight.js/styles/github-dark.min.css';
 import 'katex/dist/katex.min.css';
 import AppNavBar from '@/components/AppNavBar.vue';
 import DrawCanvas from '@/components/DrawCanvas.vue';
+import CloudImagePicker from '@/components/CloudImagePicker.vue';
 import api from '@/utils/api';
 import LatexRenderer from '@/utils/latex-renderer';
 
@@ -1139,7 +1143,7 @@ var NOTE_TEMPLATES = [
 
 export default {
   name: 'Notes',
-  components: { AppNavBar: AppNavBar, DrawCanvas: DrawCanvas },
+  components: { AppNavBar: AppNavBar, DrawCanvas: DrawCanvas, CloudImagePicker: CloudImagePicker },
   data: function() {
     return {
       files: [],
@@ -1202,6 +1206,9 @@ export default {
       chartEditorError: '',
       showCommandPalette: false,
       commandPaletteQuery: '',
+      // 云盘图片选择器
+      showCloudPicker: false,
+      imageInsertPos: null, // 打开选择器时保存的编辑器光标位置 { start, end }
       folders: ['全部', '默认'],
       activeFolder: '全部',
       sortBy: 'updatedAt',
@@ -1925,6 +1932,61 @@ export default {
         self.activeFile.tags.push(tag);
       }
       self.onFileChange();
+    },
+    // ============ 云盘图片/音视频插入 ============
+    openCloudImagePicker: function() {
+      // 打开选择器前保存编辑器光标位置，选择后在该位置插入
+      var editor = this.$refs.editor;
+      if (editor) {
+        this.imageInsertPos = { start: editor.selectionStart, end: editor.selectionEnd };
+      }
+      this.showCloudPicker = true;
+    },
+    onCloudImageSelect: function(file) {
+      var self = this;
+      self.showCloudPicker = false;
+      if (!file || !file.name) return;
+      // 构造云盘文件访问 URL
+      var url = '/api/cloud/files/' + encodeURIComponent(file.name);
+      // 按文件类型分支：图片用 ![]()，音视频用 []()（customRenderer.link 渲染播放器）
+      var type = self.getCloudFileType(file.name);
+      var md = type === 'image' ? '![' + file.name + '](' + url + ')' : '[' + file.name + '](' + url + ')';
+      var editor = self.$refs.editor;
+      if (!editor) {
+        // 兜底：追加到末尾
+        self.activeFile.content = (self.activeFile.content || '') + '\n' + md + '\n';
+        self.onFileChange();
+        return;
+      }
+      // 在保存的光标位置插入（若未保存则用当前光标）
+      var pos = self.imageInsertPos || { start: editor.selectionStart, end: editor.selectionEnd };
+      var text = editor.value || '';
+      var before = text.substring(0, pos.start);
+      var after = text.substring(pos.end);
+      var insertText = (before && !before.endsWith('\n') ? '\n' : '') + md + '\n';
+      self.activeFile.content = before + insertText + after;
+      self.imageInsertPos = null;
+      // 恢复编辑器焦点并将光标移到插入内容之后
+      self.$nextTick(function() {
+        editor.focus();
+        var cursorPos = (before + insertText).length;
+        editor.setSelectionRange(cursorPos, cursorPos);
+      });
+      self.onFileChange();
+    },
+    getCloudFileType: function(name) {
+      // 与 CloudImagePicker.getFileType 保持一致的简化版
+      var lower = (name || '').toLowerCase();
+      if (lower.indexOf('__audio') > -1) return 'audio';
+      if (lower.indexOf('__video') > -1) return 'video';
+      if (lower.indexOf('__image') > -1) return 'image';
+      var VID_EXTS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
+      var AUD_EXTS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus'];
+      var IMG_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+      for (var v = 0; v < VID_EXTS.length; v++) { if (lower.indexOf(VID_EXTS[v]) > -1) return 'video'; }
+      for (var a = 0; a < AUD_EXTS.length; a++) { if (lower.indexOf(AUD_EXTS[a]) > -1) return 'audio'; }
+      for (var i = 0; i < IMG_EXTS.length; i++) { if (lower.indexOf(IMG_EXTS[i]) > -1) return 'image'; }
+      return 'other';
     },
     insertMarkdown: function(type) {
       var self = this;
