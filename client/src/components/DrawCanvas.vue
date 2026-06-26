@@ -275,10 +275,17 @@ export default {
       var self = this;
       var workspace = self.$refs.workspace;
       if (!workspace) return;
-      var maxW = workspace.offsetWidth - 40;
-      var maxH = workspace.offsetHeight - 40;
-      var w = self.canvasWidth || Math.min(maxW, 1200);
-      var h = self.canvasHeight || Math.min(maxH, 800);
+      var w, h;
+      if (self.mode === 'annotation') {
+        // 批注模式：canvas 尺寸 = 工作区尺寸 = 预览内容完整尺寸
+        w = workspace.offsetWidth || 800;
+        h = workspace.offsetHeight || 600;
+      } else {
+        var maxW = workspace.offsetWidth - 40;
+        var maxH = workspace.offsetHeight - 40;
+        w = self.canvasWidth || Math.min(maxW, 1200);
+        h = self.canvasHeight || Math.min(maxH, 800);
+      }
       if (w < 400) w = 400;
       if (h < 300) h = 300;
       w = Math.floor(w);
@@ -1122,10 +1129,24 @@ export default {
 }
 
 .draw-canvas--annotation {
+  /* 撑满 .annotation-overlay，即整个预览内容区域 */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
   background: transparent !important;
 }
 
 .draw-canvas--annotation .dc-anno-toolbar {
+  /* 工具栏浮动在顶部，不占据画布空间 */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
   pointer-events: auto;
 }
 
@@ -1464,7 +1485,15 @@ export default {
 }
 
 .draw-canvas--annotation .dc-workspace {
+  /* 工作区覆盖整个内容区域，canvas 尺寸 = 内容尺寸 */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: transparent;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
 .dc-layers-container {

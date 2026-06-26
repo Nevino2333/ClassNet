@@ -320,9 +320,7 @@
 
       <div
         v-if="activeFile && viewMode !== 'edit'"
-        class="preview-area scrollbar-thin"
-        ref="previewContainer"
-        @scroll="syncPreviewScroll"
+        class="preview-area"
         :style="previewAreaStyle"
       >
         <div class="preview-header">
@@ -353,22 +351,26 @@
         </div>
         <div class="preview-content-wrap">
           <div
-            class="preview-content markdown-body"
-            v-html="renderedContentHtml"
+            class="preview-content markdown-body scrollbar-thin"
+            ref="previewContainer"
+            @scroll="syncPreviewScroll"
             @mouseup="onPreviewTextSelect"
             @touchend="onPreviewTextSelect"
-          ></div>
-
-          <!-- 批注涂鸦层：直接覆盖在文字上 -->
-          <div v-if="showAnnotationLayer" class="annotation-overlay" :class="{ 'annotation-active': annoDrawing }">
-            <DrawCanvas
-              ref="annotationCanvas"
-              mode="annotation"
-              :key="'anno_' + activeFileId"
-              :initialLayers="activeFile.canvasData || []"
-              @save="onAnnotationSave"
-              @drawing="annoDrawing = $event"
-            />
+          >
+            <div class="preview-content-inner">
+              <div class="preview-content-html" v-html="renderedContentHtml"></div>
+              <!-- 批注涂鸦层：在滚动内容内部，随内容自然滚动 -->
+              <div v-if="showAnnotationLayer" class="annotation-overlay" :class="{ 'annotation-active': annoDrawing }">
+                <DrawCanvas
+                  ref="annotationCanvas"
+                  mode="annotation"
+                  :key="'anno_' + activeFileId"
+                  :initialLayers="activeFile.canvasData || []"
+                  @save="onAnnotationSave"
+                  @drawing="annoDrawing = $event"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1384,6 +1386,10 @@ export default {
       self.$nextTick(function() {
         self.bindTodoClicks();
         self.renderMermaidCharts();
+        // 内容变化后，若批注层已开启，重新测量并初始化画布尺寸（保留现有图层）
+        if (self.showAnnotationLayer && self.$refs.annotationCanvas) {
+          self.$refs.annotationCanvas.init(self.activeFile.canvasData || []);
+        }
       });
     },
     'activeFile.content': {
@@ -4008,6 +4014,18 @@ export default {
   min-height: 0;
   word-break: break-word;
   overflow-wrap: break-word;
+  /* 让 .annotation-overlay 的 absolute 定位以本元素为参照 */
+  position: relative;
+}
+
+/* 内容内部容器：包裹渲染HTML和批注涂鸦层，作为滚动内容的一部分 */
+.preview-content-inner {
+  position: relative;
+}
+
+/* 承载 v-html 的容器 */
+.preview-content-html {
+  position: relative;
 }
 
 .canvas-preview-section {
@@ -4802,6 +4820,12 @@ export default {
 
 .preview-content-wrap {
   position: relative;
+  /* 在 .preview-area 的 flex 列布局中占满剩余空间并允许收缩 */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .annotation-overlay {
