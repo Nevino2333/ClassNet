@@ -1164,9 +1164,10 @@ customRenderer.link = function(href, title, text) {
     mediaType = 'audio';
   }
   if (mediaType === 'video') {
-    return '<div class="md-media-wrapper md-video-wrapper">' +
-      '<video class="video-js md-video md-media" data-media-url="' + safeUrl + '" data-media-type="video" src="' + safeUrl + '" preload="metadata" controls></video>' +
-      '<div class="md-media-hint">点击视频可全屏预览</div>' +
+    return '<div class="md-media-wrapper md-video-wrapper md-media" data-media-url="' + safeUrl + '" data-media-type="video">' +
+      '<video class="video-js md-video" data-media-url="' + safeUrl + '" data-media-type="video" src="' + safeUrl + '" preload="metadata" playsinline muted></video>' +
+      '<div class="md-video-play"><i class="fa-solid fa-play"></i></div>' +
+      '<div class="md-media-hint">点击全屏播放</div>' +
       '</div>';
   }
   if (mediaType === 'audio') {
@@ -1428,9 +1429,14 @@ export default {
     // === 图片预览与长按菜单 ===
     onMarkdownClick: function(e) {
       var target = e.target;
-      // 跳过视频/音频原生控件点击
-      if (target.tagName === 'VIDEO' || target.tagName === 'AUDIO') return;
-      if (target.classList && target.classList.contains('md-media')) {
+      // 跳过音频原生控件点击（音频保留 controls）
+      if (target.tagName === 'AUDIO') return;
+      // 向上查找最近的 md-media 元素（支持视频包裹器和图片）
+      var mediaEl = target.closest ? target.closest('.md-media') : null;
+      if (!mediaEl && target.classList && target.classList.contains('md-media')) {
+        mediaEl = target;
+      }
+      if (mediaEl) {
         if (this.mdLongPressTriggered) {
           this.mdLongPressTriggered = false;
           e.preventDefault();
@@ -1439,8 +1445,8 @@ export default {
         }
         e.preventDefault();
         e.stopPropagation();
-        var url = target.getAttribute('data-media-url') || target.getAttribute('data-preview-url') || target.src;
-        var type = target.getAttribute('data-media-type') || 'image';
+        var url = mediaEl.getAttribute('data-media-url') || mediaEl.getAttribute('data-preview-url') || mediaEl.src;
+        var type = mediaEl.getAttribute('data-media-type') || 'image';
         this.previewMedia({ url: url, type: type });
       }
     },
@@ -2918,9 +2924,9 @@ export default {
 .comment-emoji-picker { max-height: 120px; }
 
 /* video.js CSS 覆盖（仅样式，不初始化 JS） */
-.md-video-wrapper ::v-deep .video-js { width: 100%; max-width: 480px; border-radius: var(--radius-md); overflow: hidden; }
+.md-video-wrapper ::v-deep .video-js { width: 100%; max-width: 720px; border-radius: var(--radius-md); overflow: hidden; }
 .md-video-wrapper ::v-deep .vjs-big-play-button { display: none !important; }
-.md-audio-wrapper ::v-deep .video-js { width: 100%; max-width: 320px; height: 40px; border-radius: var(--radius-sm); overflow: hidden; }
+.md-audio-wrapper ::v-deep .video-js { width: 100%; max-width: 360px; height: 44px; border-radius: var(--radius-sm); overflow: hidden; }
 .md-audio-wrapper ::v-deep .vjs-big-play-button { display: none !important; }
 .md-audio-wrapper ::v-deep .vjs-control-bar { font-size: 10px; }
 .md-audio-wrapper ::v-deep .vjs-volume-panel { min-width: 40px; }
@@ -3357,7 +3363,7 @@ export default {
 /* 论坛媒体元素：可点击预览/长按转存 */
 .markdown-body >>> .md-media {
   max-width: 100%;
-  max-height: 360px;
+  max-height: 400px;
   border-radius: var(--radius-md);
   cursor: pointer;
   -webkit-touch-callout: none;
@@ -3369,22 +3375,53 @@ export default {
 .markdown-body >>> .md-media:active {
   opacity: 0.85;
 }
+/* 视频包裹器 */
 .markdown-body >>> .md-video-wrapper {
-  max-width: 480px;
+  position: relative;
+  display: inline-block;
+  max-width: 720px;
+  width: 100%;
   margin: 8px 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
 }
 .markdown-body >>> .md-video {
+  display: block;
   width: 100%;
+  max-height: 400px;
   border-radius: var(--radius-md);
   background: #000;
 }
+/* 视频播放按钮覆盖层 */
+.markdown-body >>> .md-video-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.markdown-body >>> .md-video-play i {
+  color: #fff;
+  font-size: 18px;
+  margin-left: 2px;
+}
+/* 音频 */
 .markdown-body >>> .md-audio-wrapper {
-  max-width: 320px;
+  max-width: 360px;
   margin: 6px 0;
 }
 .markdown-body >>> .md-audio {
   width: 100%;
-  height: 44px;
+  height: 48px;
   border-radius: var(--radius-sm);
 }
 .markdown-body >>> .md-media-hint {

@@ -1175,7 +1175,6 @@ export default {
       showVersionHistory: false,
       showVersionPreview: false,
       versionPreviewHtml: '',
-      showCanvasModal: false,
       showCreateMenu: false,
       showAnnotationLayer: false,
       annoDrawing: false,
@@ -4026,41 +4025,6 @@ export default {
 /* 承载 v-html 的容器 */
 .preview-content-html {
   position: relative;
-}
-
-.canvas-preview-section {
-  padding: 16px 24px;
-  border-top: 0.5px solid var(--separator-color);
-}
-
-.canvas-preview-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.canvas-preview-images {
-  position: relative;
-  min-height: 200px;
-}
-
-.canvas-preview-images::after {
-  content: '';
-  display: block;
-  padding-top: 75%;
-}
-
-.canvas-preview-img {
-  width: 100%;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 
 .modal-overlay {
