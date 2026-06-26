@@ -1221,7 +1221,7 @@ export default {
 }
 
 /* 语音条 UI（微信式） */
-.msg-voice-bar {
+.chat-bubble >>> .msg-voice-bar {
   display: flex;
   align-items: center;
   min-width: 160px;
@@ -1238,11 +1238,11 @@ export default {
 }
 
 /* 自己消息的语音条 */
-.own-bubble .msg-voice-bar {
+.chat-bubble.own-bubble >>> .msg-voice-bar {
   background: rgba(255, 255, 255, 0.25);
 }
 
-.voice-play-btn {
+.chat-bubble >>> .voice-play-btn {
   flex-shrink: 0;
   width: 28px;
   height: 28px;
@@ -1254,21 +1254,21 @@ export default {
   margin-right: 10px;
 }
 
-.own-bubble .voice-play-btn {
+.own-bubble >>> .voice-play-btn {
   background: rgba(255, 255, 255, 0.9);
 }
 
-.own-bubble .voice-play-btn i {
+.own-bubble >>> .voice-play-btn i {
   color: var(--primary-color, #007aff);
 }
 
-.voice-play-btn i {
+.chat-bubble >>> .voice-play-btn i {
   color: #fff;
   font-size: 11px;
   margin-left: 1px;
 }
 
-.voice-wave {
+.chat-bubble >>> .voice-wave {
   flex: 1;
   position: relative;
   height: 24px;
@@ -1277,7 +1277,7 @@ export default {
   overflow: hidden;
 }
 
-.voice-wave-bars {
+.chat-bubble >>> .voice-wave-bars {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -1285,7 +1285,7 @@ export default {
   height: 100%;
 }
 
-.voice-wave-bars span {
+.chat-bubble >>> .voice-wave-bars span {
   flex: 1;
   height: 4px;
   min-width: 2px;
@@ -1295,19 +1295,19 @@ export default {
   transition: background 0.15s;
 }
 
-.own-bubble .voice-wave-bars span {
+.own-bubble >>> .voice-wave-bars span {
   background: rgba(255, 255, 255, 0.4);
 }
 
-.voice-wave-bars span.active {
+.chat-bubble >>> .voice-wave-bars span.active {
   background: var(--primary-color, #007aff);
 }
 
-.own-bubble .voice-wave-bars span.active {
+.own-bubble >>> .voice-wave-bars span.active {
   background: #fff;
 }
 
-.voice-progress {
+.chat-bubble >>> .voice-progress {
   position: absolute;
   top: 0;
   left: 0;
@@ -1317,7 +1317,7 @@ export default {
   pointer-events: none;
 }
 
-.voice-duration {
+.chat-bubble >>> .voice-duration {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--text-color-secondary, rgba(0, 0, 0, 0.5));
@@ -1326,11 +1326,11 @@ export default {
   text-align: right;
 }
 
-.own-bubble .voice-duration {
+.own-bubble >>> .voice-duration {
   color: rgba(255, 255, 255, 0.8);
 }
 
-.msg-media {
+.chat-bubble >>> .msg-media {
   cursor: pointer;
 }
 </style>
