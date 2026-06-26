@@ -8,7 +8,7 @@
         <button class="nav-action-btn" @click="openResourcePicker" title="从资源仓库导入">
           <i class="fa-solid fa-file-import"></i>
         </button>
-        <button class="nav-action-btn nav-btn-primary" @click="showTemplatePicker = true" title="新建笔记">
+        <button class="nav-action-btn nav-btn-primary" @click="onNewFileClick" title="新建">
           <i class="fa-solid fa-plus"></i>
         </button>
         <div class="nav-mode-switch">
@@ -36,11 +36,19 @@
           >
             <i class="fa-solid fa-eye"></i>
           </button>
+          <button
+            class="mode-btn mode-btn-draw"
+            :class="{ active: viewMode === 'draw' }"
+            @click="switchToDrawMode"
+            title="画板模式"
+          >
+            <i class="fa-solid fa-palette"></i>
+          </button>
         </div>
       </template>
     </AppNavBar>
 
-    <div class="notes-body">
+    <div class="notes-body" v-if="viewMode !== 'draw'">
       <transition name="sidebar-slide">
         <div v-if="showSidebar" class="notes-sidebar">
           <div class="sidebar-top">
@@ -84,7 +92,11 @@
               @contextmenu.prevent="showFileMenu($event, file)"
             >
               <div class="file-item-main">
-                <div class="file-item-title" v-html="highlightSearch(file.title || '未命名笔记')"></div>
+                <div class="file-item-title">
+                  <i v-if="file.type === 'draw'" class="fa-solid fa-palette file-type-icon draw-type" title="画板文件"></i>
+                  <i v-else class="fa-regular fa-note-sticky file-type-icon note-type" title="笔记文件"></i>
+                  <span v-html="highlightSearch(file.title || '未命名笔记')"></span>
+                </div>
                 <div class="file-item-meta">
                   <i v-if="file.pinned" class="fa-solid fa-thumbtack file-badge-icon" title="已置顶"></i>
                   <i v-if="file.starred" class="fa-solid fa-star file-badge-icon starred" title="已收藏"></i>
@@ -141,7 +153,7 @@
                 <button class="editor-tag-btn" @click="showTagModal = true" title="管理标签">
                   <i class="fa-solid fa-tags"></i>
                 </button>
-                <button class="editor-tag-btn" @click="openCanvas" title="画布" v-if="viewMode === 'edit' || viewMode === 'split'">
+                <button class="editor-tag-btn" @click="switchToDrawMode" title="画板" v-if="(viewMode === 'edit' || viewMode === 'split') && activeFile && activeFile.type !== 'draw'">
                   <i class="fa-solid fa-paintbrush"></i>
                 </button>
                 <button class="editor-tag-btn" @click="showVersionHistory = true" title="版本历史">
@@ -287,11 +299,62 @@
       >
         <div class="preview-header">
           <span class="preview-label">预览</span>
+          <button
+            v-if="activeFile && activeFile.type !== 'draw'"
+            class="preview-anno-toggle"
+            :class="{ active: showAnnotationLayer }"
+            @click="toggleAnnotationLayer"
+            title="批注模式"
+          >
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>{{ showAnnotationLayer ? '退出批注' : '批注' }}</span>
+          </button>
         </div>
-        <div class="preview-content markdown-body" v-html="renderedContentHtml"></div>
-        <div v-if="activeFile && activeFile.canvasData && activeFile.canvasData.length" class="canvas-preview-section">
+        <div
+          class="preview-content markdown-body"
+          v-html="renderedContentHtml"
+          @mouseup="onPreviewTextSelect"
+          @touchend="onPreviewTextSelect"
+        ></div>
+
+        <!-- 批注涂鸦层 -->
+        <div v-if="showAnnotationLayer" class="annotation-overlay">
+          <DrawCanvas
+            ref="annotationCanvas"
+            mode="annotation"
+            :initialLayers="activeFile.canvasData || []"
+            @save="onAnnotationSave"
+          />
+        </div>
+
+        <!-- 结构化批注卡片 -->
+        <div v-if="annotationCards.length > 0 && !showAnnotationLayer" class="annotation-cards-section">
+          <div class="annotation-cards-label">
+            <i class="fa-solid fa-pen-to-square"></i> 批注 ({{ annotationCards.length }})
+          </div>
+          <div
+            v-for="card in annotationCards"
+            :key="card.id"
+            class="annotation-card"
+            :style="{ borderLeftColor: card.color || '#ffc107' }"
+          >
+            <div class="annotation-card-header">
+              <span class="annotation-card-time">{{ formatDate(card.createdAt) }}</span>
+              <button class="annotation-card-del" @click="deleteAnnotation(card.id)" title="删除批注">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div v-if="card.selectedText" class="annotation-card-quote">
+              "{{ card.selectedText }}"
+            </div>
+            <div class="annotation-card-text" v-html="renderAnnotationText(card.text)"></div>
+          </div>
+        </div>
+
+        <!-- 旧版画布内容（向后兼容：仅对旧 note 文件且有 canvasData 时显示） -->
+        <div v-if="activeFile && activeFile.canvasData && activeFile.canvasData.length && !activeFile.annotations && activeFile.type !== 'draw'" class="canvas-preview-section">
           <div class="canvas-preview-label">
-            <i class="fa-solid fa-paintbrush"></i> 画布内容
+            <i class="fa-solid fa-paintbrush"></i> 画布内容（旧版）
           </div>
           <div class="canvas-preview-images">
             <img
@@ -303,6 +366,27 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ========== 画板模式 ========== -->
+  <div class="draw-body" v-if="viewMode === 'draw' && activeFile">
+    <DrawCanvas
+      ref="drawCanvas"
+      mode="full"
+      :initialLayers="activeFile.canvasData || []"
+      @save="onDrawSave"
+      @close="exitDrawMode"
+    />
+  </div>
+  <div class="draw-body draw-body--empty" v-else-if="viewMode === 'draw' && !activeFile">
+    <div class="draw-empty-state">
+      <i class="fa-solid fa-palette draw-empty-icon"></i>
+      <h3>选择或新建画板文件</h3>
+      <p>请在左侧选择一个画板文件，或新建一个开始创作</p>
+      <button class="btn-primary" @click="createDrawFile">
+        <i class="fa-solid fa-plus"></i> 新建画板
+      </button>
     </div>
   </div>
 
@@ -1027,6 +1111,7 @@ import mermaid from 'mermaid';
 import 'highlight.js/styles/github-dark.min.css';
 import 'katex/dist/katex.min.css';
 import AppNavBar from '@/components/AppNavBar.vue';
+import DrawCanvas from '@/components/DrawCanvas.vue';
 import api from '@/utils/api';
 import LatexRenderer from '@/utils/latex-renderer';
 
@@ -1181,7 +1266,7 @@ var NOTE_TEMPLATES = [
 
 export default {
   name: 'Notes',
-  components: { AppNavBar: AppNavBar },
+  components: { AppNavBar: AppNavBar, DrawCanvas: DrawCanvas },
   data: function() {
     return {
       files: [],
@@ -1218,6 +1303,9 @@ export default {
       showVersionPreview: false,
       versionPreviewHtml: '',
       showCanvasModal: false,
+      showAnnotationLayer: false,
+      annotationInput: '',
+      annotationColor: '#ffc107',
       canvasTool: 'brush',
       canvasColor: '#000000',
       canvasBrushSize: 3,
@@ -1304,6 +1392,11 @@ export default {
     },
     allFiles: function() {
       return this.files.concat(this.privateFiles);
+    },
+    annotationCards: function() {
+      var file = this.activeFile;
+      if (!file || file.type === 'draw') return [];
+      return file.annotations || [];
     },
     filteredFiles: function() {
       var self = this;
@@ -1700,11 +1793,13 @@ export default {
         id: generateId(),
         title: '未命名笔记',
         content: '',
+        type: 'note',
         tags: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isPrivate: false,
-        canvasData: [],
+        canvasData: null,
+        annotations: [],
         templateId: 'blank',
         versions: []
       };
@@ -1724,11 +1819,13 @@ export default {
         id: generateId(),
         title: tpl.name + ' - ' + dateStr,
         content: content,
+        type: 'note',
         tags: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isPrivate: false,
-        canvasData: [],
+        canvasData: null,
+        annotations: [],
         templateId: tpl.id,
         versions: []
       };
@@ -1746,11 +1843,13 @@ export default {
         id: generateId(),
         title: '未命名隐私笔记',
         content: '',
+        type: 'note',
         tags: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isPrivate: true,
-        canvasData: [],
+        canvasData: null,
+        annotations: [],
         templateId: 'blank',
         versions: []
       };
@@ -1759,9 +1858,20 @@ export default {
       self.saveData();
     },
     selectFile: function(id) {
-      this.activeFileId = id;
-      this.saveData();
-      if (this.isMobile) this.showSidebar = false;
+      var self = this;
+      self.activeFileId = id;
+      // 根据文件类型自动切换模式
+      var file = self.allFiles.find(function(f) { return f.id === id; });
+      if (file) {
+        var fileType = file.type || 'note';
+        if (fileType === 'draw' && self.viewMode !== 'draw') {
+          self.switchToDrawMode();
+        } else if (fileType === 'note' && self.viewMode === 'draw') {
+          self.exitDrawMode();
+        }
+      }
+      self.saveData();
+      if (self.isMobile) self.showSidebar = false;
     },
     deleteFile: function(id) {
       var self = this;
@@ -1806,11 +1916,13 @@ export default {
         id: generateId(),
         title: src.title + ' (副本)',
         content: src.content,
+        type: src.type || 'note',
         tags: (src.tags || []).slice(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isPrivate: src.isPrivate,
         canvasData: (src.canvasData || []).slice(),
+        annotations: (src.annotations || []).slice(),
         templateId: src.templateId || 'blank',
         versions: []
       };
@@ -2035,9 +2147,9 @@ export default {
           cursorOffset = 3;
           break;
         case 'annotation':
-          insert = '\n> [批注] ' + (selected || '批注内容') + '\n';
-          cursorOffset = 8;
-          break;
+          // 使用新的批注卡片系统
+          self.addAnnotationCard(selected || '');
+          return;
         case 'table':
           insert = '\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |\n';
           cursorOffset = 3;
@@ -3436,7 +3548,7 @@ export default {
         case 'table': self.insertMarkdown('table'); break;
         case 'fontSizeUp': self.adjustFontSize(1); break;
         case 'fontSizeDown': self.adjustFontSize(-1); break;
-        case 'canvas': self.openCanvas(); break;
+        case 'canvas': self.switchToDrawMode(); break;
         case 'tags': self.showTagModal = true; break;
         case 'versions': self.showVersionHistory = true; break;
         case 'focusMode': self.toggleFocusMode(); break;
@@ -3644,11 +3756,13 @@ export default {
         id: 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
         title: note.title || '未命名笔记',
         content: note.content || '',
+        type: 'note',
         tags: note.tags || [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isPrivate: false,
         canvasData: null,
+        annotations: [],
         templateId: null,
         versions: [],
         folder: '默认',
@@ -3663,6 +3777,154 @@ export default {
     },
     closeCanvasWithoutSave: function() {
       this.showCanvasModal = false;
+    },
+
+    // ============ 批注系统 ============
+    toggleAnnotationLayer: function() {
+      var self = this;
+      self.showAnnotationLayer = !self.showAnnotationLayer;
+      if (!self.showAnnotationLayer) {
+        // 退出批注时保存
+        self.saveData();
+      }
+    },
+
+    onAnnotationSave: function(canvasData) {
+      var self = this;
+      if (!self.activeFile) return;
+      self.activeFile.canvasData = canvasData;
+      self.activeFile.updatedAt = new Date().toISOString();
+      self.saveData();
+    },
+
+    addAnnotationCard: function(selectedText) {
+      var self = this;
+      if (!self.activeFile || self.activeFile.type === 'draw') return;
+      if (!self.activeFile.annotations) {
+        self.$set(self.activeFile, 'annotations', []);
+      }
+      self.annotationInput = '';
+      self.annotationColor = '#ffc107';
+      // 使用 prompt 获取批注内容（移动端友好）
+      var text = window.prompt('输入批注内容:');
+      if (!text || !text.trim()) return;
+      self.activeFile.annotations.push({
+        id: 'a_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        text: text.trim(),
+        selectedText: selectedText || '',
+        color: self.annotationColor,
+        createdAt: new Date().toISOString()
+      });
+      self.activeFile.updatedAt = new Date().toISOString();
+      self.saveData();
+      self.$store.commit('toast/SHOW_TOAST', { message: '批注已添加', type: 'success' });
+    },
+
+    deleteAnnotation: function(annoId) {
+      var self = this;
+      if (!self.activeFile || !self.activeFile.annotations) return;
+      var idx = self.activeFile.annotations.findIndex(function(a) { return a.id === annoId; });
+      if (idx > -1) {
+        self.activeFile.annotations.splice(idx, 1);
+        self.activeFile.updatedAt = new Date().toISOString();
+        self.saveData();
+      }
+    },
+
+    onPreviewTextSelect: function() {
+      var self = this;
+      if (self.showAnnotationLayer) return; // 批注涂鸦模式下不触发
+      setTimeout(function() {
+        var selection = window.getSelection();
+        if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+        var selectedText = selection.toString().trim();
+        if (selectedText.length < 1) return;
+        // 在预览区选中文字时自动弹出批注提示
+        // 使用轻量提示：在选中的文本下方显示一个小按钮
+        // 为了避免过于复杂，这里直接用简单的确认
+        if (selectedText.length > 0 && selectedText.length < 500) {
+          // 不自动弹出，让用户通过编辑器批注按钮来添加
+          // 但保留这个钩子供未来扩展
+        }
+      }, 300);
+    },
+
+    renderAnnotationText: function(text) {
+      if (!text) return '';
+      // 简单的 markdown 处理
+      var html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+      return html;
+    },
+
+    // ============ 画板模式 ============
+    onNewFileClick: function() {
+      if (this.viewMode === 'draw') {
+        this.createDrawFile();
+      } else {
+        this.showTemplatePicker = true;
+      }
+    },
+
+    switchToDrawMode: function() {
+      var self = this;
+      self.viewMode = 'draw';
+      // 如果当前文件是笔记类型且有内容但无画板数据，自动创建画板文件
+      if (self.activeFile && self.activeFile.type !== 'draw') {
+        // 查找是否有画板文件
+        var drawFiles = self.allFiles.filter(function(f) { return f.type === 'draw'; });
+        if (drawFiles.length > 0) {
+          self.activeFileId = drawFiles[0].id;
+        } else {
+          // 没有画板文件，暂不自动创建，显示空状态
+        }
+      }
+      self.showSidebar = true;
+    },
+
+    exitDrawMode: function() {
+      var self = this;
+      self.viewMode = 'split';
+      self.showSidebar = true;
+    },
+
+    onDrawSave: function(canvasData) {
+      var self = this;
+      if (!self.activeFile) return;
+      self.activeFile.canvasData = canvasData;
+      self.activeFile.updatedAt = new Date().toISOString();
+      self.saveData();
+      self.$store.commit('toast/SHOW_TOAST', { message: '画板已保存', type: 'success' });
+    },
+
+    createDrawFile: function() {
+      var self = this;
+      var id = generateId();
+      var now = new Date().toISOString();
+      var file = {
+        id: id,
+        title: '未命名画板 ' + new Date().toLocaleDateString('zh-CN'),
+        content: '',
+        type: 'draw',
+        tags: [],
+        folder: self.activeFolder !== '全部' ? self.activeFolder : null,
+        canvasData: [],
+        annotations: null,
+        createdAt: now,
+        updatedAt: now,
+        pinned: false,
+        privacyId: null
+      };
+      self.files.unshift(file);
+      self.activeFileId = id;
+      self.showSidebar = true;
+      self.saveData();
     }
   }
 };
@@ -3930,6 +4192,22 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.file-type-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.file-type-icon.note-type {
+  color: var(--text-tertiary);
+}
+
+.file-type-icon.draw-type {
+  color: #ff6b6b;
 }
 
 .file-item-date {
@@ -5094,6 +5372,157 @@ export default {
 .layer-reorder-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ========== 批注系统 ========== */
+.preview-anno-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.15s;
+  touch-action: manipulation;
+  min-height: 36px;
+}
+
+.preview-anno-toggle:active {
+  transform: scale(0.95);
+  opacity: 0.7;
+}
+
+.preview-anno-toggle.active {
+  background: var(--primary-color);
+  color: #FFFFFF;
+  border-color: var(--primary-color);
+}
+
+.annotation-overlay {
+  position: relative;
+  height: 300px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  margin: 8px 24px 16px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.annotation-cards-section {
+  padding: 12px 24px 16px;
+  border-top: 0.5px solid var(--separator-color);
+}
+
+.annotation-cards-label {
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.annotation-card {
+  border-left: 4px solid #ffc107;
+  background: var(--card-bg);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border-radius: 0 10px 10px 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.annotation-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.annotation-card-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.annotation-card-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 13px;
+  touch-action: manipulation;
+}
+
+.annotation-card-del:active {
+  color: var(--danger-color);
+  transform: scale(0.9);
+}
+
+.annotation-card-quote {
+  font-style: italic;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--border-color);
+  padding-left: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.annotation-card-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* ========== 画板模式 ========== */
+.draw-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.draw-body--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color);
+}
+
+.draw-empty-state {
+  text-align: center;
+  padding: 40px;
+}
+
+.draw-empty-icon {
+  font-size: 64px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.draw-empty-state h3 {
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.draw-empty-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
 }
 
 .resource-picker-item {
