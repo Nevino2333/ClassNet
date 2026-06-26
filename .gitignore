@@ -40,6 +40,10 @@ Resources/*
 Resources/public/*
 !Resources/public/level/
 !Resources/public/icons/
+# 保留壁纸目录结构（空文件夹，壁纸内容不提交）
+!Resources/public/wallpaper/
+Resources/public/wallpaper/*
+!Resources/public/wallpaper/.gitkeep
 # 保留媒体目录结构（空文件夹，实际内容不提交）
 !Resources/cloud/
 !Resources/music/
