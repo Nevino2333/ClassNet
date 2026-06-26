@@ -193,69 +193,7 @@
 
 <script>
 import api from '@/utils/api';
-
-// 检测 MediaRecorder 支持
-function isMediaRecorderSupported() {
-  return typeof window !== 'undefined' &&
-    typeof window.MediaRecorder !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    navigator.mediaDevices &&
-    typeof navigator.mediaDevices.getUserMedia === 'function';
-}
-
-// 选择支持的 MIME 类型
-function pickMimeTypes(kind) {
-  var candidates;
-  if (kind === 'video') {
-    candidates = [
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8,opus',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4'
-    ];
-  } else {
-    candidates = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/mp4',
-      'audio/ogg'
-    ];
-  }
-  for (var i = 0; i < candidates.length; i++) {
-    if (window.MediaRecorder.isTypeSupported(candidates[i])) {
-      return candidates[i];
-    }
-  }
-  return '';
-}
-
-// 从 MIME 获取扩展名，kind: 'audio'/'video' 用于区分歧义 MIME（audio/mp4 应为 .m4a）
-function extFromMime(mime, kind) {
-  if (!mime) return '.bin';
-  if (mime.indexOf('webm') > -1) return '.webm';
-  // audio/mp4 使用 .m4a 扩展名，避免被云盘识别为视频
-  if (kind === 'audio' && mime.indexOf('mp4') > -1) return '.m4a';
-  if (mime.indexOf('mp4') > -1) return '.mp4';
-  if (mime.indexOf('ogg') > -1) return '.ogg';
-  if (mime.indexOf('mp3') > -1) return '.mp3';
-  if (mime.indexOf('wav') > -1) return '.wav';
-  return '.bin';
-}
-
-// 从文件名获取媒体类型
-function getMediaTypeByName(name) {
-  var ext = '';
-  var idx = name.lastIndexOf('.');
-  if (idx > -1) ext = name.substring(idx).toLowerCase();
-  var imgs = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-  var vids = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.3gp'];
-  var auds = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus'];
-  if (imgs.indexOf(ext) > -1) return 'image';
-  if (vids.indexOf(ext) > -1) return 'video';
-  if (auds.indexOf(ext) > -1) return 'audio';
-  return 'other';
-}
+import { isMediaRecorderSupported, pickMimeTypes, extFromMime, getMediaTypeByName, getMediaError, getAudioConstraints, getVideoAudioConstraints } from '@/utils/media-recorder.js';
 
 export default {
   name: 'CloudUpload',
@@ -449,7 +387,7 @@ export default {
         self.showToast('录音需要 HTTPS 安全环境', 'error');
         return;
       }
-      navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
+      navigator.mediaDevices.getUserMedia({ audio: getAudioConstraints(), video: false }).then(function(stream) {
         self.audioStream = stream;
         self.audioChunks = [];
         // 创建 AnalyserNode 用于波形可视化
@@ -466,7 +404,7 @@ export default {
           }
         } catch (e) {}
         var mime = pickMimeTypes('audio');
-        var options = {};
+        var options = { audioBitsPerSecond: 128000 }; // 128kbps 高质量语音
         if (mime) options.mimeType = mime;
         var recorder = new MediaRecorder(stream, options);
         recorder.ondataavailable = function(e) {
@@ -490,7 +428,7 @@ export default {
           self.startWaveform();
         });
       }).catch(function(err) {
-        self.showToast(self.getMediaError(err), 'error');
+        self.showToast(getMediaError(err), 'error');
       });
     },
     stopAudioRecord: function() {
@@ -640,7 +578,7 @@ export default {
       }
       var constraints = {
         video: { facingMode: self.facingMode, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: true
+        audio: getVideoAudioConstraints()
       };
       navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
         self.videoStream = stream;
@@ -651,7 +589,7 @@ export default {
         }
         self.cameraReady = true;
       }).catch(function(err) {
-        self.videoError = self.getMediaError(err);
+        self.videoError = getMediaError(err);
       });
     },
     switchCamera: function() {
@@ -675,7 +613,7 @@ export default {
       }
       self.videoChunks = [];
       var mime = pickMimeTypes('video');
-      var options = { videoBitsPerSecond: 4000000 }; // 4Mbps 提升画质
+      var options = { videoBitsPerSecond: 4000000, audioBitsPerSecond: 128000 }; // 4Mbps 画质 + 128kbps 音质
       if (mime) options.mimeType = mime;
       try {
         var recorder = new MediaRecorder(self.videoStream, options);
@@ -801,25 +739,6 @@ export default {
         clearInterval(this.recordTimer);
         this.recordTimer = null;
       }
-    },
-
-    // ===== 错误处理 =====
-    getMediaError: function(err) {
-      if (!err) return '设备访问失败';
-      var name = err.name || '';
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        return '已拒绝访问设备权限，请在浏览器设置中允许';
-      }
-      if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-        return '未找到摄像头或麦克风设备';
-      }
-      if (name === 'NotReadableError' || name === 'TrackStartError') {
-        return '设备被其他程序占用';
-      }
-      if (name === 'OverconstrainedError') {
-        return '设备不满足要求，尝试切换摄像头';
-      }
-      return err.message || '设备访问失败';
     }
   }
 };
