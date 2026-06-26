@@ -316,7 +316,18 @@ export default {
           }
           return;
         }
-        // 处理媒体元素点击 → 全屏预览（视频/音频/图片通用）
+        // 语音条点击 → 切换播放（不触发全屏预览）
+        var voiceBar = target.closest && target.closest('.msg-voice-bar');
+        if (voiceBar) {
+          e.preventDefault();
+          e.stopPropagation();
+          var voiceUrl = voiceBar.getAttribute('data-media-url');
+          if (voiceUrl) {
+            this.toggleVoicePlay(voiceUrl, voiceBar);
+          }
+          return;
+        }
+        // 处理媒体元素点击 → 全屏预览（视频/图片通用）
         if (target.classList && target.classList.contains('msg-media')) {
           e.preventDefault();
           e.stopPropagation();
@@ -338,6 +349,88 @@ export default {
         }
         target = target.parentNode;
       }
+    },
+    // 初始化未绑定的语音条：创建 Audio 对象，绑定事件
+    initVoiceBars: function() {
+      var self = this;
+      var bars = self.$el.querySelectorAll('.msg-voice-bar[data-voice-init="0"]');
+      for (var i = 0; i < bars.length; i++) {
+        (function(bar) {
+          var url = bar.getAttribute('data-media-url');
+          if (!url) return;
+          bar.setAttribute('data-voice-init', '1');
+          // 创建 Audio 对象（复用池）
+          if (!self.audioPlayers[url]) {
+            var audio = new Audio(url);
+            audio.preload = 'metadata';
+            audio.addEventListener('loadedmetadata', function() {
+              var dur = audio.duration;
+              if (isNaN(dur) || dur === Infinity) return;
+              var durEl = bar.querySelector('.voice-duration');
+              if (durEl) durEl.textContent = Math.ceil(dur) + '"';
+            });
+            audio.addEventListener('timeupdate', function() {
+              var dur = audio.duration;
+              if (isNaN(dur) || dur === Infinity || dur === 0) return;
+              var progress = (audio.currentTime / dur) * 100;
+              var progEl = bar.querySelector('.voice-progress');
+              if (progEl) progEl.style.width = progress + '%';
+              var waveBars = bar.querySelectorAll('.voice-wave-bars span');
+              var activeCount = Math.ceil((progress / 100) * waveBars.length);
+              for (var k = 0; k < waveBars.length; k++) {
+                if (k < activeCount) waveBars[k].classList.add('active');
+                else waveBars[k].classList.remove('active');
+              }
+            });
+            audio.addEventListener('ended', function() {
+              var playBtn = bar.querySelector('.voice-play-btn i');
+              if (playBtn) playBtn.className = 'fa-solid fa-play';
+              var progEl = bar.querySelector('.voice-progress');
+              if (progEl) progEl.style.width = '0%';
+              var waveBars = bar.querySelectorAll('.voice-wave-bars span');
+              for (var k = 0; k < waveBars.length; k++) {
+                waveBars[k].classList.remove('active');
+              }
+            });
+            self.audioPlayers[url] = audio;
+          }
+        })(bars[i]);
+      }
+    },
+    // 切换语音条播放/暂停
+    toggleVoicePlay: function(url, barEl) {
+      var audio = this.audioPlayers[url];
+      if (!audio) return;
+      var playIcon = barEl.querySelector('.voice-play-btn i');
+      if (audio.paused) {
+        // 暂停其他正在播放的语音
+        for (var key in this.audioPlayers) {
+          if (key !== url && !this.audioPlayers[key].paused) {
+            this.audioPlayers[key].pause();
+            var otherBar = this.$el.querySelector('.msg-voice-bar[data-media-url="' + key.replace(/"/g, '\\"') + '"]');
+            if (otherBar) {
+              var otherIcon = otherBar.querySelector('.voice-play-btn i');
+              if (otherIcon) otherIcon.className = 'fa-solid fa-play';
+            }
+          }
+        }
+        audio.play().catch(function() {});
+        if (playIcon) playIcon.className = 'fa-solid fa-pause';
+      } else {
+        audio.pause();
+        if (playIcon) playIcon.className = 'fa-solid fa-play';
+      }
+    },
+    // 清理所有 Audio 对象
+    cleanupAudioPlayers: function() {
+      for (var key in this.audioPlayers) {
+        var audio = this.audioPlayers[key];
+        if (audio) {
+          audio.pause();
+          audio.src = '';
+        }
+      }
+      this.audioPlayers = {};
     },
     onForwardClick: function() {
       if (this.forwardData.postId) {
@@ -1127,18 +1220,114 @@ export default {
   margin-left: 2px;
 }
 
-.msg-audio-wrapper {
-  min-width: 200px;
-  max-width: 280px;
-}
-
-.msg-audio {
-  display: block;
-  width: 100%;
+/* 语音条 UI（微信式） */
+.msg-voice-bar {
+  display: flex;
+  align-items: center;
+  min-width: 160px;
+  max-width: 240px;
   height: 40px;
-  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  border-radius: 20px;
+  background: var(--bg-elevated, #f5f5f7);
+  cursor: pointer;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 自己消息的语音条 */
+.own-bubble .msg-voice-bar {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.voice-play-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-color, #007aff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.own-bubble .voice-play-btn {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.own-bubble .voice-play-btn i {
+  color: var(--primary-color, #007aff);
+}
+
+.voice-play-btn i {
+  color: #fff;
+  font-size: 11px;
+  margin-left: 1px;
+}
+
+.voice-wave {
+  flex: 1;
+  position: relative;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.voice-wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.voice-wave-bars span {
+  flex: 1;
+  height: 4px;
+  min-width: 2px;
+  max-width: 6px;
+  border-radius: 2px;
+  background: var(--text-color-secondary, rgba(0, 0, 0, 0.3));
+  transition: background 0.15s;
+}
+
+.own-bubble .voice-wave-bars span {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.voice-wave-bars span.active {
+  background: var(--primary-color, #007aff);
+}
+
+.own-bubble .voice-wave-bars span.active {
+  background: #fff;
+}
+
+.voice-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: transparent;
+  pointer-events: none;
+}
+
+.voice-duration {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-color-secondary, rgba(0, 0, 0, 0.5));
+  margin-left: 8px;
+  min-width: 28px;
+  text-align: right;
+}
+
+.own-bubble .voice-duration {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .msg-media {
