@@ -644,12 +644,6 @@
             <button class="comment-tool-btn" @click="commentCloudTarget = 'comment'; showCloudPicker = true" title="云盘文件">
               <i class="fa-solid fa-cloud"></i>
             </button>
-            <button class="comment-tool-btn" @click="openRecordModal('audio', 'comment')" title="录音">
-              <i class="fa-solid fa-microphone"></i>
-            </button>
-            <button class="comment-tool-btn" @click="openRecordModal('video', 'comment')" title="录像">
-              <i class="fa-solid fa-video"></i>
-            </button>
           </div>
           <div v-if="commentEmojiOpen" class="emoji-picker comment-emoji-picker">
             <button
@@ -857,12 +851,6 @@
               </button>
               <button class="toolbar-btn" @click="commentCloudTarget = 'post'; showCloudPicker = true" title="云盘文件">
                 <i class="fa-solid fa-cloud"></i>
-              </button>
-              <button class="toolbar-btn" @click="openRecordModal('audio', 'post')" title="录音">
-                <i class="fa-solid fa-microphone"></i>
-              </button>
-              <button class="toolbar-btn" @click="openRecordModal('video', 'post')" title="录像">
-                <i class="fa-solid fa-video"></i>
               </button>
               <div class="char-counter" :class="{ over: isContentOverLimit }">{{ contentCharCount }}/{{ maxContentLength }}</div>
             </div>
@@ -1075,14 +1063,6 @@
 
     <!-- Image Preview -->
     <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" :media-type="mediaPreviewType" @close="closeImagePreview" />
-
-    <!-- Record Modal -->
-    <RecordModal
-      :visible="showRecordModal"
-      :mode="recordMode"
-      @close="showRecordModal = false"
-      @uploaded="onRecordUploaded"
-    />
 
     <!-- Image long-press menu -->
     <transition name="fade-quick">
