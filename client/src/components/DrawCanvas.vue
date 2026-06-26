@@ -1,248 +1,105 @@
 <template>
   <div class="draw-canvas" :class="'draw-canvas--' + mode" ref="root">
-    <!-- ========== 全屏画板模式工具栏 ========== -->
-    <div v-if="mode === 'full'" class="dc-toolbar">
-      <div class="dc-tools-left">
-        <!-- 工具按钮 -->
-        <button
-          v-for="tool in visibleTools"
-          :key="tool.id"
-          class="dc-tool-btn"
-          :class="{ active: activeTool === tool.id }"
-          @click="setTool(tool.id)"
-          :title="tool.name"
-        >
+    <!-- ================================================================== -->
+    <!--  全屏画板模式：左侧纵向工具条 + 右侧画布区                         -->
+    <!-- ================================================================== -->
+    <div v-if="mode === 'full'" class="dc-full-layout">
+      <!-- 左侧工具条 -->
+      <div class="dc-sidebar">
+        <button v-for="tool in visibleTools" :key="tool.id" class="dc-side-btn" :class="{ active: activeTool === tool.id }" @click="setTool(tool.id)" :title="tool.name">
           <i class="fa-solid" :class="tool.icon"></i>
         </button>
-        <div class="dc-toolbar-sep"></div>
-        <!-- 笔刷类型 (画笔激活时) -->
-        <template v-if="activeTool === 'brush'">
-          <button
-            v-for="bt in brushTypes"
-            :key="bt.id"
-            class="dc-tool-btn dc-brush-btn"
-            :class="{ active: brushType === bt.id }"
-            @click="brushType = bt.id"
-            :title="bt.name"
-          >
-            <i class="fa-solid" :class="bt.icon"></i>
-          </button>
-          <div class="dc-toolbar-sep"></div>
-        </template>
-        <!-- 填充切换 (形状工具激活时) -->
-        <template v-if="isShapeTool">
-          <button
-            class="dc-tool-btn"
-            :class="{ active: fillShape }"
-            @click="fillShape = !fillShape"
-            title="填充/描边切换"
-          >
-            <i class="fa-solid" :class="fillShape ? 'fa-fill-drip' : 'fa-fill'"></i>
-          </button>
-          <div class="dc-toolbar-sep"></div>
-        </template>
-        <!-- 颜色选择 -->
-        <label class="dc-color-wrap">
-          <input type="color" v-model="color" class="dc-color-input" />
-          <span class="dc-color-preview" :style="{ background: color }"></span>
-        </label>
-        <div class="dc-preset-colors">
-          <span
-            v-for="c in presetColors"
-            :key="c"
-            class="dc-preset-color"
-            :style="{ background: c }"
-            :class="{ active: color === c }"
-            @click="color = c"
-          ></span>
-        </div>
-        <div class="dc-toolbar-sep"></div>
-        <!-- 大小滑块 -->
-        <div class="dc-slider-group">
-          <label class="dc-slider-label">大小</label>
-          <input type="range" min="1" max="80" v-model.number="lineWidth" class="dc-slider" />
-          <span class="dc-slider-value">{{ lineWidth }}</span>
-        </div>
-        <!-- 透明度滑块 -->
-        <div class="dc-slider-group">
-          <label class="dc-slider-label">透明</label>
-          <input type="range" min="5" max="100" v-model.number="opacity" class="dc-slider" />
-          <span class="dc-slider-value">{{ Math.round(opacity) }}%</span>
-        </div>
-        <div class="dc-toolbar-sep"></div>
-        <!-- 网格/吸附/参考线 -->
-        <button class="dc-tool-btn" :class="{ active: showGrid }" @click="toggleGrid" title="网格">
-          <i class="fa-solid fa-border-all"></i>
+        <div class="dc-side-sep"></div>
+        <button v-for="bt in brushTypes" :key="bt.id" class="dc-side-btn dc-side-btn--sm" :class="{ active: activeTool === 'brush' && brushType === bt.id }" @click="activeTool = 'brush'; brushType = bt.id" :title="bt.name">
+          <i class="fa-solid" :class="bt.icon"></i>
         </button>
-        <button class="dc-tool-btn" :class="{ active: snapToGrid }" @click="snapToGrid = !snapToGrid" title="吸附网格">
-          <i class="fa-solid fa-magnet"></i>
-        </button>
-        <button class="dc-tool-btn" :class="{ active: showGuides }" @click="showGuides = !showGuides" title="参考线">
-          <i class="fa-solid fa-grip-lines"></i>
-        </button>
-        <!-- 图片导入 -->
-        <button class="dc-tool-btn" @click="triggerImageImport" title="导入图片">
-          <i class="fa-solid fa-image"></i>
-        </button>
+        <div class="dc-side-sep"></div>
+        <button class="dc-side-btn" @click="triggerImageImport" title="导入图片"><i class="fa-solid fa-image"></i></button>
+        <button class="dc-side-btn" :class="{ active: showGrid }" @click="toggleGrid" title="网格"><i class="fa-solid fa-border-all"></i></button>
+        <button class="dc-side-btn" :class="{ active: snapToGrid }" @click="snapToGrid = !snapToGrid" title="吸附"><i class="fa-solid fa-magnet"></i></button>
+        <button class="dc-side-btn" :class="{ active: showGuides }" @click="showGuides = !showGuides" title="参考线"><i class="fa-solid fa-grip-lines"></i></button>
         <input type="file" ref="imageInput" accept="image/*" style="display:none" @change="onImageImport" />
+        <div class="dc-side-spacer"></div>
+        <button class="dc-side-btn" @click="undo" :disabled="historyIdx <= 0" title="撤销"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="dc-side-btn" @click="redo" :disabled="historyIdx >= history.length - 1" title="重做"><i class="fa-solid fa-rotate-right"></i></button>
       </div>
-      <div class="dc-tools-right">
-        <button class="dc-tool-btn" @click="undo" :disabled="historyIdx <= 0" title="撤销">
-          <i class="fa-solid fa-rotate-left"></i>
-        </button>
-        <button class="dc-tool-btn" @click="redo" :disabled="historyIdx >= history.length - 1" title="重做">
-          <i class="fa-solid fa-rotate-right"></i>
-        </button>
-        <button class="dc-tool-btn" @click="clearLayer" title="清除当前图层">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
-        <div class="dc-toolbar-sep"></div>
-        <button class="btn-secondary" @click="$emit('close')">取消</button>
-        <button class="btn-primary" @click="saveAndClose">保存并关闭</button>
-      </div>
-    </div>
 
-    <!-- ========== 批注模式工具栏 ========== -->
-    <div v-if="mode === 'annotation'" class="dc-anno-toolbar">
-      <div class="dc-anno-tools">
-        <button
-          class="dc-tool-btn"
-          :class="{ active: annotating }"
-          @click="annotating = !annotating"
-          title="批注画笔"
-        >
-          <i class="fa-solid fa-pen"></i>
-        </button>
-        <template v-if="annotating">
-          <button
-            v-for="tool in annoTools"
-            :key="tool.id"
-            class="dc-tool-btn"
-            :class="{ active: activeTool === tool.id }"
-            @click="setTool(tool.id)"
-            :title="tool.name"
-          >
-            <i class="fa-solid" :class="tool.icon"></i>
-          </button>
-          <div class="dc-toolbar-sep"></div>
-          <label class="dc-color-wrap">
-            <input type="color" v-model="color" class="dc-color-input" />
-            <span class="dc-color-preview dc-color-preview--sm" :style="{ background: color }"></span>
-          </label>
-          <div class="dc-slider-group">
-            <input type="range" min="1" max="30" v-model.number="lineWidth" class="dc-slider dc-slider--sm" />
-            <span class="dc-slider-value">{{ lineWidth }}</span>
+      <!-- 右侧主体 -->
+      <div class="dc-main">
+        <div class="dc-options-bar">
+          <label class="dc-color-wrap"><input type="color" v-model="color" class="dc-color-input" /><span class="dc-color-preview" :style="{ background: color }"></span></label>
+          <div class="dc-preset-colors"><span v-for="c in presetColors" :key="c" class="dc-preset-color" :style="{ background: c }" :class="{ active: color === c }" @click="color = c"></span></div>
+          <div class="dc-opt-sep"></div>
+          <div class="dc-slider-group"><label class="dc-slider-label">粗细</label><input type="range" min="1" max="80" v-model.number="lineWidth" class="dc-slider" /><span class="dc-slider-value">{{ lineWidth }}</span></div>
+          <div class="dc-slider-group"><label class="dc-slider-label">透明</label><input type="range" min="5" max="100" v-model.number="opacity" class="dc-slider" /><span class="dc-slider-value">{{ Math.round(opacity) }}%</span></div>
+          <template v-if="isShapeTool"><div class="dc-opt-sep"></div><button class="dc-opt-btn" :class="{ active: fillShape }" @click="fillShape = !fillShape"><i class="fa-solid" :class="fillShape ? 'fa-fill-drip' : 'fa-fill'"></i><span>{{ fillShape ? '填充' : '描边' }}</span></button></template>
+          <div class="dc-opt-spacer"></div>
+          <button class="dc-opt-btn" @click="clearLayer"><i class="fa-solid fa-trash-can"></i><span>清除图层</span></button>
+          <button class="btn-secondary btn-sm" @click="$emit('close')">退出</button>
+          <button class="btn-primary btn-sm" @click="saveAndClose">保存</button>
+        </div>
+
+        <!-- 画布工作区 -->
+        <div class="dc-workspace" ref="workspace" @wheel.prevent="onWheel" @dblclick="fitToWindow">
+          <div class="dc-layers-container" ref="layersContainer" :style="layersContainerStyle">
+            <canvas v-for="(layer, idx) in layers" :key="layer.id" :ref="'layer_' + idx" class="dc-layer" :style="{ zIndex: idx, opacity: layer.visible ? 1 : 0, pointerEvents: activeLayerIdx === idx ? 'auto' : 'none' }" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseUp" @touchstart.prevent="onTouchStart" @touchmove.prevent="onTouchMove" @touchend.prevent="onTouchEnd"></canvas>
+            <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: layers.length, pointerEvents: 'none' }"></canvas>
+            <canvas ref="gridOverlay" class="dc-layer dc-grid-overlay" :style="{ zIndex: layers.length + 1, pointerEvents: 'none', opacity: showGrid ? 1 : 0 }"></canvas>
+            <canvas v-if="showGuides" ref="guidesOverlay" class="dc-layer dc-guides-overlay" :style="{ zIndex: layers.length + 2, pointerEvents: 'none' }"></canvas>
+            <div v-if="textInput.visible" class="dc-text-input-wrap" :style="{ left: textInput.x + 'px', top: textInput.y + 'px' }"><input ref="textInputEl" v-model="textInput.text" class="dc-text-input" :style="{ fontSize: Math.max(14, lineWidth * 3) + 'px', color: color }" @keydown.enter="commitText" @keydown.escape="cancelText" placeholder="输入文字后回车确认..." /></div>
           </div>
-          <div class="dc-toolbar-sep"></div>
-          <button class="dc-tool-btn" @click="undo" :disabled="historyIdx <= 0" title="撤销">
-            <i class="fa-solid fa-rotate-left"></i>
-          </button>
-          <button class="dc-tool-btn" @click="redo" :disabled="historyIdx >= history.length - 1" title="重做">
-            <i class="fa-solid fa-rotate-right"></i>
-          </button>
-        </template>
+          <div class="dc-minimap" ref="minimap"><canvas ref="minimapCanvas" class="dc-minimap-canvas" @click="onMinimapClick"></canvas><div class="dc-minimap-viewport" :style="minimapViewportStyle"></div></div>
+        </div>
+
+        <!-- 图层管理栏 -->
+        <div class="dc-layers-bar">
+          <button class="dc-layer-btn" @click="addLayer" title="添加图层"><i class="fa-solid fa-plus"></i></button>
+          <div class="dc-layer-list">
+            <div v-for="(layer, idx) in layers" :key="layer.id" class="dc-layer-item" :class="{ active: activeLayerIdx === idx }" @click="activeLayerIdx = idx">
+              <button class="dc-layer-vis-btn" @click.stop="toggleLayerVisibility(idx)" :title="layer.visible ? '隐藏' : '显示'"><i class="fa-solid" :class="layer.visible ? 'fa-eye' : 'fa-eye-slash'"></i></button>
+              <span class="dc-layer-name">{{ layer.name }}</span>
+              <select v-model="layer.blendMode" class="dc-layer-blend" @click.stop title="混合模式"><option value="normal">正常</option><option value="multiply">正片叠底</option><option value="screen">滤色</option><option value="overlay">叠加</option></select>
+              <button class="dc-layer-del-btn" @click.stop="removeLayer(idx)" v-if="layers.length > 1" title="删除图层"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          </div>
+          <div class="dc-layer-reorder">
+            <button class="dc-layer-reorder-btn" @click="moveLayerUp" :disabled="activeLayerIdx <= 0"><i class="fa-solid fa-chevron-up"></i></button>
+            <button class="dc-layer-reorder-btn" @click="moveLayerDown" :disabled="activeLayerIdx >= layers.length - 1"><i class="fa-solid fa-chevron-down"></i></button>
+          </div>
+        </div>
+
+        <!-- 导入图片变换 -->
+        <div v-if="importedImage" class="dc-image-transform"><div class="dc-image-transform-btns"><button class="btn-sm btn-primary" @click="commitImportedImage">放置</button><button class="btn-sm btn-secondary" @click="cancelImportedImage">取消</button></div></div>
       </div>
-      <button v-if="annotating" class="btn-primary btn-sm" @click="finishAnnotation">完成批注</button>
     </div>
 
-    <!-- ========== 画布工作区 ========== -->
-    <div
-      class="dc-workspace"
-      ref="workspace"
-      @wheel.prevent="onWheel"
-      @dblclick="fitToWindow"
-    >
-      <div
-        class="dc-layers-container"
-        ref="layersContainer"
-        :style="layersContainerStyle"
-      >
-        <!-- 图层 canvas -->
-        <canvas
-          v-for="(layer, idx) in layers"
-          :key="layer.id"
-          :ref="'layer_' + idx"
-          class="dc-layer"
-          :style="{ zIndex: idx, opacity: layer.visible ? 1 : 0, pointerEvents: activeLayerIdx === idx && (mode === 'full' || annotating) ? 'auto' : 'none' }"
-          @mousedown="onMouseDown"
-          @mousemove="onMouseMove"
-          @mouseup="onMouseUp"
-          @mouseleave="onMouseUp"
-          @touchstart.prevent="onTouchStart"
-          @touchmove.prevent="onTouchMove"
-          @touchend.prevent="onTouchEnd"
-        ></canvas>
-        <!-- 形状预览叠加层 -->
-        <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: layers.length, pointerEvents: 'none' }"></canvas>
-        <!-- 网格叠加层 -->
-        <canvas v-if="mode === 'full'" ref="gridOverlay" class="dc-layer dc-grid-overlay" :style="{ zIndex: layers.length + 1, pointerEvents: 'none', opacity: showGrid ? 1 : 0 }"></canvas>
-        <!-- 参考线叠加层 -->
-        <canvas v-if="mode === 'full' && showGuides" ref="guidesOverlay" class="dc-layer dc-guides-overlay" :style="{ zIndex: layers.length + 2, pointerEvents: 'none' }"></canvas>
-        <!-- 文字输入 -->
-        <div v-if="textInput.visible" class="dc-text-input-wrap" :style="{ left: textInput.x + 'px', top: textInput.y + 'px' }">
-          <input
-            ref="textInputEl"
-            v-model="textInput.text"
-            class="dc-text-input"
-            :style="{ fontSize: Math.max(14, lineWidth * 3) + 'px', color: color }"
-            @keydown.enter="commitText"
-            @keydown.escape="cancelText"
-            placeholder="输入文字后回车确认..."
-          />
+    <!-- ================================================================== -->
+    <!--  批注模式：浮动工具栏 + 透明画布                                     -->
+    <!-- ================================================================== -->
+    <template v-if="mode === 'annotation'">
+      <div class="dc-anno-toolbar">
+        <div class="dc-anno-tools">
+          <button class="dc-tool-btn" :class="{ active: annotating }" @click="annotating = !annotating" title="批注画笔"><i class="fa-solid fa-pen"></i></button>
+          <template v-if="annotating">
+            <button v-for="tool in annoTools" :key="tool.id" class="dc-tool-btn" :class="{ active: activeTool === tool.id }" @click="setTool(tool.id)" :title="tool.name"><i class="fa-solid" :class="tool.icon"></i></button>
+            <div class="dc-toolbar-sep"></div>
+            <label class="dc-color-wrap"><input type="color" v-model="color" class="dc-color-input" /><span class="dc-color-preview dc-color-preview--sm" :style="{ background: color }"></span></label>
+            <div class="dc-slider-group"><input type="range" min="1" max="30" v-model.number="lineWidth" class="dc-slider dc-slider--sm" /><span class="dc-slider-value">{{ lineWidth }}</span></div>
+            <div class="dc-toolbar-sep"></div>
+            <button class="dc-tool-btn" @click="undo" :disabled="historyIdx <= 0"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="dc-tool-btn" @click="redo" :disabled="historyIdx >= history.length - 1"><i class="fa-solid fa-rotate-right"></i></button>
+          </template>
+        </div>
+        <button v-if="annotating" class="btn-primary btn-sm" @click="finishAnnotation">完成批注</button>
+      </div>
+      <div class="dc-workspace" ref="workspace" @dblclick="fitToWindow">
+        <div class="dc-layers-container" ref="layersContainer" :style="layersContainerStyle">
+          <canvas v-for="(layer, idx) in layers" :key="layer.id" :ref="'layer_' + idx" class="dc-layer" :style="{ zIndex: idx, opacity: layer.visible ? 1 : 0, pointerEvents: activeLayerIdx === idx && annotating ? 'auto' : 'none' }" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseUp" @touchstart.prevent="onTouchStart" @touchmove.prevent="onTouchMove" @touchend.prevent="onTouchEnd"></canvas>
+          <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: layers.length, pointerEvents: 'none' }"></canvas>
+          <div v-if="textInput.visible" class="dc-text-input-wrap" :style="{ left: textInput.x + 'px', top: textInput.y + 'px' }"><input ref="textInputEl" v-model="textInput.text" class="dc-text-input" :style="{ fontSize: Math.max(14, lineWidth * 3) + 'px', color: color }" @keydown.enter="commitText" @keydown.escape="cancelText" placeholder="输入文字后回车确认..." /></div>
         </div>
       </div>
-      <!-- 缩略图导航 (画板模式) -->
-      <div v-if="mode === 'full'" class="dc-minimap" ref="minimap">
-        <canvas ref="minimapCanvas" class="dc-minimap-canvas" @click="onMinimapClick"></canvas>
-        <div class="dc-minimap-viewport" :style="minimapViewportStyle"></div>
-      </div>
-    </div>
-
-    <!-- ========== 图层管理栏 (画板模式) ========== -->
-    <div v-if="mode === 'full'" class="dc-layers-bar">
-      <button class="dc-layer-btn" @click="addLayer" title="添加图层">
-        <i class="fa-solid fa-plus"></i>
-      </button>
-      <div class="dc-layer-list">
-        <div
-          v-for="(layer, idx) in layers"
-          :key="layer.id"
-          class="dc-layer-item"
-          :class="{ active: activeLayerIdx === idx }"
-          @click="activeLayerIdx = idx"
-        >
-          <button class="dc-layer-vis-btn" @click.stop="toggleLayerVisibility(idx)" :title="layer.visible ? '隐藏' : '显示'">
-            <i class="fa-solid" :class="layer.visible ? 'fa-eye' : 'fa-eye-slash'"></i>
-          </button>
-          <span class="dc-layer-name">{{ layer.name }}</span>
-          <select v-model="layer.blendMode" class="dc-layer-blend" @click.stop title="混合模式">
-            <option value="normal">正常</option>
-            <option value="multiply">正片叠底</option>
-            <option value="screen">滤色</option>
-            <option value="overlay">叠加</option>
-          </select>
-          <button class="dc-layer-del-btn" @click.stop="removeLayer(idx)" v-if="layers.length > 1" title="删除图层">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      </div>
-      <div class="dc-layer-reorder">
-        <button class="dc-layer-reorder-btn" @click="moveLayerUp" :disabled="activeLayerIdx <= 0" title="上移图层">
-          <i class="fa-solid fa-chevron-up"></i>
-        </button>
-        <button class="dc-layer-reorder-btn" @click="moveLayerDown" :disabled="activeLayerIdx >= layers.length - 1" title="下移图层">
-          <i class="fa-solid fa-chevron-down"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- 导入图片的变换控制 -->
-    <div v-if="importedImage" class="dc-image-transform">
-      <div class="dc-image-transform-btns">
-        <button class="btn-sm btn-primary" @click="commitImportedImage">放置</button>
-        <button class="btn-sm btn-secondary" @click="cancelImportedImage">取消</button>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -1254,7 +1111,137 @@ export default {
   -webkit-user-select: none;
 }
 
-/* ========== 全屏工具栏 ========== */
+/* ========== 全屏模式：左右布局 ========== */
+.dc-full-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 左侧工具条 */
+.dc-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: var(--card-bg);
+  border-right: 0.5px solid var(--separator-color);
+  flex-shrink: 0;
+  width: 52px;
+  overflow-y: auto;
+}
+
+.dc-side-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: none;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dc-side-btn--sm {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.dc-side-btn:active:not(:disabled) {
+  transform: scale(0.9);
+  opacity: 0.7;
+}
+
+.dc-side-btn.active {
+  background: var(--primary-color);
+  color: #FFFFFF;
+  border-color: var(--primary-color);
+}
+
+.dc-side-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.dc-side-sep {
+  width: 36px;
+  height: 1px;
+  background: var(--separator-color);
+  margin: 4px 0;
+}
+
+.dc-side-spacer {
+  flex: 1;
+}
+
+/* 右侧主体 */
+.dc-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 选项栏 */
+.dc-options-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--card-bg);
+  border-bottom: 0.5px solid var(--separator-color);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.dc-opt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 36px;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.dc-opt-btn:active {
+  transform: scale(0.95);
+}
+
+.dc-opt-btn.active {
+  background: var(--primary-color);
+  color: #FFFFFF;
+  border-color: var(--primary-color);
+}
+
+.dc-opt-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--separator-color);
+}
+
+.dc-opt-spacer {
+  flex: 1;
+}
+
+/* ========== 旧式全屏工具栏（保留用于回退） ========== */
 .dc-toolbar {
   display: flex;
   align-items: center;

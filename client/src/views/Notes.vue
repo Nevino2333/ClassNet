@@ -8,10 +8,24 @@
         <button class="nav-action-btn" @click="openResourcePicker" title="从资源仓库导入">
           <i class="fa-solid fa-file-import"></i>
         </button>
-        <button class="nav-action-btn nav-btn-primary" @click="onNewFileClick" title="新建">
-          <i class="fa-solid fa-plus"></i>
-        </button>
-        <div class="nav-mode-switch">
+        <div class="nav-create-dropdown">
+          <button class="nav-action-btn nav-btn-primary" @click="showCreateMenu = !showCreateMenu" title="新建">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+          <transition name="dropdown-fade">
+            <div v-if="showCreateMenu" class="create-menu" @click.stop>
+              <button class="create-menu-item" @click="createNoteFile; showCreateMenu = false">
+                <i class="fa-regular fa-note-sticky"></i>
+                <span>新建笔记</span>
+              </button>
+              <button class="create-menu-item" @click="createDrawFile; showCreateMenu = false">
+                <i class="fa-solid fa-palette"></i>
+                <span>新建画板</span>
+              </button>
+            </div>
+          </transition>
+        </div>
+        <div class="nav-mode-switch" v-if="!isDrawFile">
           <button
             class="mode-btn"
             :class="{ active: viewMode === 'edit' }"
@@ -36,19 +50,33 @@
           >
             <i class="fa-solid fa-eye"></i>
           </button>
-          <button
-            class="mode-btn mode-btn-draw"
-            :class="{ active: viewMode === 'draw' }"
-            @click="switchToDrawMode"
-            title="画板模式"
-          >
-            <i class="fa-solid fa-palette"></i>
-          </button>
         </div>
       </template>
     </AppNavBar>
 
-    <div class="notes-body" v-if="viewMode !== 'draw'">
+    <!-- ========== 画板文件：全屏 DrawCanvas ========== -->
+    <div class="draw-body" v-if="isDrawFile && activeFile" :key="'draw_' + activeFileId">
+      <DrawCanvas
+        ref="drawCanvas"
+        mode="full"
+        :initialLayers="activeFile.canvasData || []"
+        @save="onDrawSave"
+        @close="exitDrawFile"
+      />
+    </div>
+    <div class="draw-body draw-body--empty" v-else-if="isDrawFile && !activeFile">
+      <div class="draw-empty-state">
+        <i class="fa-solid fa-palette draw-empty-icon"></i>
+        <h3>选择或新建画板文件</h3>
+        <p>在左侧选择一个画板文件，或新建一个开始创作</p>
+        <button class="btn-primary" @click="createDrawFile">
+          <i class="fa-solid fa-plus"></i> 新建画板
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== 笔记文件：正常笔记 UI ========== -->
+    <div class="notes-body" v-if="!isDrawFile">
       <transition name="sidebar-slide">
         <div v-if="showSidebar" class="notes-sidebar">
           <div class="sidebar-top">
@@ -153,8 +181,8 @@
                 <button class="editor-tag-btn" @click="showTagModal = true" title="管理标签">
                   <i class="fa-solid fa-tags"></i>
                 </button>
-                <button class="editor-tag-btn" @click="switchToDrawMode" title="画板" v-if="(viewMode === 'edit' || viewMode === 'split') && activeFile && activeFile.type !== 'draw'">
-                  <i class="fa-solid fa-paintbrush"></i>
+                <button class="editor-tag-btn" @click="startAnnotation" title="批注" v-if="(viewMode === 'edit' || viewMode === 'split') && activeFile && activeFile.type !== 'draw'">
+                  <i class="fa-solid fa-pen-to-square"></i>
                 </button>
                 <button class="editor-tag-btn" @click="showVersionHistory = true" title="版本历史">
                   <i class="fa-solid fa-clock-rotate-left"></i>
@@ -304,32 +332,44 @@
             class="preview-anno-toggle"
             :class="{ active: showAnnotationLayer }"
             @click="toggleAnnotationLayer"
-            title="批注模式"
+            title="在文字上直接批注"
           >
             <i class="fa-solid fa-pen-to-square"></i>
             <span>{{ showAnnotationLayer ? '退出批注' : '批注' }}</span>
           </button>
         </div>
-        <div
-          class="preview-content markdown-body"
-          v-html="renderedContentHtml"
-          @mouseup="onPreviewTextSelect"
-          @touchend="onPreviewTextSelect"
-        ></div>
+        <div class="preview-content-wrap">
+          <div
+            class="preview-content markdown-body"
+            v-html="renderedContentHtml"
+            @mouseup="onPreviewTextSelect"
+            @touchend="onPreviewTextSelect"
+          ></div>
 
-        <!-- 批注涂鸦层 -->
-        <div v-if="showAnnotationLayer" class="annotation-overlay">
-          <DrawCanvas
-            ref="annotationCanvas"
-            mode="annotation"
-            :key="'anno_' + activeFileId"
-            :initialLayers="activeFile.canvasData || []"
-            @save="onAnnotationSave"
-          />
+          <!-- 批注涂鸦层：直接覆盖在文字上 -->
+          <div v-if="showAnnotationLayer" class="annotation-overlay">
+            <DrawCanvas
+              ref="annotationCanvas"
+              mode="annotation"
+              :key="'anno_' + activeFileId"
+              :initialLayers="activeFile.canvasData || []"
+              @save="onAnnotationSave"
+            />
+          </div>
         </div>
 
-        <!-- 结构化批注卡片 -->
-        <div v-if="annotationCards.length > 0 && !showAnnotationLayer" class="annotation-cards-section">
+        <!-- 旧版画布数据预览（向后兼容：旧笔记文件有 canvasData 但无 annotations） -->
+        <div v-if="activeFile && activeFile.canvasData && activeFile.canvasData.length && !activeFile.annotations && !showAnnotationLayer" class="canvas-preview-section">
+          <div class="canvas-preview-label">
+            <i class="fa-solid fa-paintbrush"></i> 画布内容（旧版数据）
+          </div>
+          <div class="canvas-preview-images">
+            <img v-for="(layer, idx) in activeFile.canvasData" :key="idx" :src="layer" class="canvas-preview-img" />
+          </div>
+        </div>
+
+        <!-- 结构化批注卡片（在内容下方） -->
+        <div v-if="annotationCards.length > 0" class="annotation-cards-section">
           <div class="annotation-cards-label">
             <i class="fa-solid fa-pen-to-square"></i> 批注 ({{ annotationCards.length }})
           </div>
@@ -351,44 +391,7 @@
             <div class="annotation-card-text" v-html="renderAnnotationText(card.text)"></div>
           </div>
         </div>
-
-        <!-- 旧版画布内容（向后兼容：仅对旧 note 文件且有 canvasData 时显示） -->
-        <div v-if="activeFile && activeFile.canvasData && activeFile.canvasData.length && !activeFile.annotations && activeFile.type !== 'draw'" class="canvas-preview-section">
-          <div class="canvas-preview-label">
-            <i class="fa-solid fa-paintbrush"></i> 画布内容（旧版）
-          </div>
-          <div class="canvas-preview-images">
-            <img
-              v-for="(layer, idx) in activeFile.canvasData"
-              :key="idx"
-              :src="layer"
-              class="canvas-preview-img"
-            />
-          </div>
-        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ========== 画板模式 ========== -->
-  <div class="draw-body" v-if="viewMode === 'draw' && activeFile">
-    <DrawCanvas
-      ref="drawCanvas"
-      mode="full"
-      :key="'draw_' + activeFileId"
-      :initialLayers="activeFile.canvasData || []"
-      @save="onDrawSave"
-      @close="exitDrawMode"
-    />
-  </div>
-  <div class="draw-body draw-body--empty" v-else-if="viewMode === 'draw' && !activeFile">
-    <div class="draw-empty-state">
-      <i class="fa-solid fa-palette draw-empty-icon"></i>
-      <h3>选择或新建画板文件</h3>
-      <p>请在左侧选择一个画板文件，或新建一个开始创作</p>
-      <button class="btn-primary" @click="createDrawFile">
-        <i class="fa-solid fa-plus"></i> 新建画板
-      </button>
     </div>
   </div>
 
@@ -1305,6 +1308,7 @@ export default {
       showVersionPreview: false,
       versionPreviewHtml: '',
       showCanvasModal: false,
+      showCreateMenu: false,
       showAnnotationLayer: false,
       annotationInput: '',
       annotationColor: '#ffc107',
@@ -1394,6 +1398,10 @@ export default {
     },
     allFiles: function() {
       return this.files.concat(this.privateFiles);
+    },
+    isDrawFile: function() {
+      var file = this.activeFile;
+      return file && file.type === 'draw';
     },
     annotationCards: function() {
       var file = this.activeFile;
@@ -1862,7 +1870,7 @@ export default {
     selectFile: function(id) {
       var self = this;
       // 切换前自动保存画板数据
-      if (self.viewMode === 'draw' && self.activeFile && self.activeFile.id !== id && self.$refs.drawCanvas) {
+      if (self.isDrawFile && self.activeFile && self.activeFile.id !== id && self.$refs.drawCanvas) {
         try {
           var currentData = self.$refs.drawCanvas.getData();
           self.activeFile.canvasData = currentData;
@@ -1876,16 +1884,6 @@ export default {
         } catch(e) {}
       }
       self.activeFileId = id;
-      // 根据文件类型自动切换模式
-      var file = self.allFiles.find(function(f) { return f.id === id; });
-      if (file) {
-        var fileType = file.type || 'note';
-        if (fileType === 'draw' && self.viewMode !== 'draw') {
-          self.switchToDrawMode();
-        } else if (fileType === 'note' && self.viewMode === 'draw') {
-          self.exitDrawMode();
-        }
-      }
       self.saveData();
       if (self.isMobile) self.showSidebar = false;
     },
@@ -3564,7 +3562,7 @@ export default {
         case 'table': self.insertMarkdown('table'); break;
         case 'fontSizeUp': self.adjustFontSize(1); break;
         case 'fontSizeDown': self.adjustFontSize(-1); break;
-        case 'canvas': self.switchToDrawMode(); break;
+        case 'canvas': self.createDrawFile(); break;
         case 'tags': self.showTagModal = true; break;
         case 'versions': self.showVersionHistory = true; break;
         case 'focusMode': self.toggleFocusMode(); break;
@@ -3796,6 +3794,19 @@ export default {
     },
 
     // ============ 批注系统 ============
+    startAnnotation: function() {
+      var self = this;
+      if (self.viewMode === 'edit') {
+        self.viewMode = 'split';
+        // 等分屏渲染后再打开批注层
+        self.$nextTick(function() {
+          self.showAnnotationLayer = true;
+        });
+      } else {
+        self.showAnnotationLayer = true;
+      }
+    },
+
     toggleAnnotationLayer: function() {
       var self = this;
       self.showAnnotationLayer = !self.showAnnotationLayer;
@@ -3880,34 +3891,17 @@ export default {
     },
 
     // ============ 画板模式 ============
-    onNewFileClick: function() {
-      if (this.viewMode === 'draw') {
-        this.createDrawFile();
-      } else {
-        this.showTemplatePicker = true;
-      }
+    createNoteFile: function() {
+      this.showTemplatePicker = true;
     },
 
-    switchToDrawMode: function() {
+    exitDrawFile: function() {
       var self = this;
-      self.viewMode = 'draw';
-      // 如果当前文件是笔记类型且有内容但无画板数据，自动创建画板文件
-      if (self.activeFile && self.activeFile.type !== 'draw') {
-        // 查找是否有画板文件
-        var drawFiles = self.allFiles.filter(function(f) { return f.type === 'draw'; });
-        if (drawFiles.length > 0) {
-          self.activeFileId = drawFiles[0].id;
-        } else {
-          // 没有画板文件，暂不自动创建，显示空状态
-        }
+      // 切到最近的非画板文件
+      var noteFile = self.allFiles.find(function(f) { return f.type !== 'draw'; });
+      if (noteFile) {
+        self.activeFileId = noteFile.id;
       }
-      self.showSidebar = true;
-    },
-
-    exitDrawMode: function() {
-      var self = this;
-      self.viewMode = 'split';
-      self.showSidebar = true;
     },
 
     onDrawSave: function(canvasData) {
@@ -3916,7 +3910,6 @@ export default {
       self.activeFile.canvasData = canvasData;
       self.activeFile.updatedAt = new Date().toISOString();
       self.saveData();
-      self.$store.commit('toast/SHOW_TOAST', { message: '画板已保存', type: 'success' });
     },
 
     createDrawFile: function() {
@@ -3987,6 +3980,68 @@ export default {
 .nav-btn-primary:hover {
   opacity: .9;
   background: var(--primary-color);
+}
+
+/* 新建下拉菜单 */
+.nav-create-dropdown {
+  position: relative;
+}
+
+.create-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  border: 0.5px solid var(--separator-color);
+  padding: 6px;
+  z-index: 1000;
+  min-width: 160px;
+}
+
+.create-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+  touch-action: manipulation;
+  min-height: 44px;
+}
+
+.create-menu-item:hover {
+  background: var(--bg-color);
+}
+
+.create-menu-item:active {
+  background: var(--primary-light);
+  transform: scale(0.97);
+}
+
+.create-menu-item i {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dropdown-fade-enter,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .nav-mode-switch {
@@ -5419,14 +5474,18 @@ export default {
   border-color: var(--primary-color);
 }
 
-.annotation-overlay {
+.preview-content-wrap {
   position: relative;
-  height: 300px;
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-  margin: 8px 24px 16px;
+}
+
+.annotation-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   overflow: hidden;
-  background: transparent;
 }
 
 .annotation-cards-section {
