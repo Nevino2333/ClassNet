@@ -592,6 +592,7 @@ export default {
       videoEl.setAttribute('x5-playsinline', '');
       videoEl.setAttribute('x5-video-player-type', 'h5');
       videoEl.setAttribute('preload', 'metadata');
+      videoEl.setAttribute('muted', '');
       container.appendChild(videoEl);
 
       // MKV → 需预转码为 MP4（运行 Resources/视频批量转码MKV.bat）

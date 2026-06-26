@@ -19,7 +19,7 @@
 
       <!-- 视频模式：Video.js 全屏播放 -->
       <div v-else-if="mediaType === 'video'" class="media-preview-content video-preview-wrap" @click.stop>
-        <video ref="videoPlayer" class="video-js vjs-big-play-centered preview-video-player" controls autoplay playsinline>
+        <video ref="videoPlayer" class="video-js vjs-big-play-centered preview-video-player" controls autoplay muted playsinline>
           <source :src="imageUrl" :type="videoSourceType">
         </video>
       </div>
@@ -118,7 +118,7 @@ export default {
       var el = self.$refs.videoPlayer;
       if (!el) return;
       self.videoPlayer = videojs(el, {
-        controls: true, autoplay: true, preload: 'auto',
+        controls: true, autoplay: true, muted: true, preload: 'auto',
         fluid: true, fill: true,
         playbackRates: [0.5, 1, 1.25, 1.5, 2],
         controlBar: {
