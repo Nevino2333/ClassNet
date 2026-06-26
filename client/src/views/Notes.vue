@@ -322,6 +322,7 @@
           <DrawCanvas
             ref="annotationCanvas"
             mode="annotation"
+            :key="'anno_' + activeFileId"
             :initialLayers="activeFile.canvasData || []"
             @save="onAnnotationSave"
           />
@@ -374,6 +375,7 @@
     <DrawCanvas
       ref="drawCanvas"
       mode="full"
+      :key="'draw_' + activeFileId"
       :initialLayers="activeFile.canvasData || []"
       @save="onDrawSave"
       @close="exitDrawMode"
@@ -1859,6 +1861,20 @@ export default {
     },
     selectFile: function(id) {
       var self = this;
+      // 切换前自动保存画板数据
+      if (self.viewMode === 'draw' && self.activeFile && self.activeFile.id !== id && self.$refs.drawCanvas) {
+        try {
+          var currentData = self.$refs.drawCanvas.getData();
+          self.activeFile.canvasData = currentData;
+        } catch(e) {}
+      }
+      // 切换前自动保存批注数据
+      if (self.showAnnotationLayer && self.activeFile && self.$refs.annotationCanvas) {
+        try {
+          var annoData = self.$refs.annotationCanvas.getData();
+          self.activeFile.canvasData = annoData;
+        } catch(e) {}
+      }
       self.activeFileId = id;
       // 根据文件类型自动切换模式
       var file = self.allFiles.find(function(f) { return f.id === id; });
