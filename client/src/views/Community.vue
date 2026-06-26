@@ -1087,7 +1087,6 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue';
 import CloudImagePicker from '@/components/CloudImagePicker.vue';
 import ImagePreview from '@/components/ImagePreview.vue';
-import RecordModal from '@/components/RecordModal.vue';
 import api from '@/utils/api';
 import helpers from '@/utils/helpers';
 import wsManager from '@/utils/websocket';
@@ -1191,7 +1190,7 @@ marked.setOptions({
 
 export default {
   name: 'Community',
-  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker, ImagePreview: ImagePreview, RecordModal: RecordModal },
+  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker, ImagePreview: ImagePreview },
   data: function() {
     return {
       tabs: [
@@ -1217,10 +1216,6 @@ export default {
       showEmojiPicker: false,
       showCloudPicker: false,
       commentCloudTarget: 'post', // 云盘选择目标：'post'(发帖) / 'comment'(评论)
-      // 录音/录像弹窗
-      showRecordModal: false,
-      recordMode: 'audio', // 'audio' / 'video'
-      recordTarget: 'post', // 'post'(发帖) / 'comment'(评论)
       // 评论工具栏
       commentEmojiOpen: false,
       // 图片预览
@@ -1888,23 +1883,6 @@ export default {
       }
       this.showCloudPicker = false;
       this.commentCloudTarget = 'post'; // 重置目标
-    },
-    // 打开录音/录像弹窗
-    openRecordModal: function(mode, target) {
-      this.recordMode = mode;
-      this.recordTarget = target;
-      this.showRecordModal = true;
-    },
-    // 录音/录像上传完成回调
-    onRecordUploaded: function(data) {
-      var md = '[' + data.name + '](' + data.url + ')';
-      if (this.recordTarget === 'comment') {
-        this.commentText += md;
-      } else {
-        this.newPost.content += md;
-      }
-      this.showRecordModal = false;
-      this.$store.commit('toast/SHOW_TOAST', { message: data.type === 'audio' ? '录音已添加' : '视频已添加', type: 'success' });
     },
     // 评论插入表情
     insertCommentEmoji: function(emoji) {
