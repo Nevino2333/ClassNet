@@ -3323,7 +3323,7 @@ export default {
   box-shadow: var(--shadow-lg);
   border: 0.5px solid var(--separator-color);
   padding: 6px;
-  z-index: 1000;
+  z-index: 3000;
   min-width: 160px;
 }
 
@@ -4057,7 +4057,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 3000;
 }
 
 .modal-panel {
