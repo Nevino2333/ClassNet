@@ -1064,14 +1064,14 @@
     <!-- Image Preview -->
     <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" :media-type="mediaPreviewType" @close="closeImagePreview" />
 
-    <!-- Image long-press menu -->
+    <!-- 媒体长按菜单（图片/视频/音频通用） -->
     <transition name="fade-quick">
       <div v-if="showImageMenu" class="image-menu-overlay" @click="closeImageMenu">
         <div class="image-menu-popup" :style="{ top: imageMenuPos.y + 'px', left: imageMenuPos.x + 'px' }" @click.stop>
           <button class="ctx-item" @click="previewImageFromMenu">
-            <i class="fa-solid fa-image"></i> 查看图片
+            <i class="fa-solid" :class="menuMediaIcon"></i> {{ menuMediaLabel }}
           </button>
-          <button v-if="canSaveMenuImage" class="ctx-item" @click="saveMenuImageToCloud">
+          <button v-if="canSaveMenuMedia" class="ctx-item" @click="saveMenuImageToCloud">
             <i class="fa-solid fa-cloud-arrow-up"></i> 转存到云盘
           </button>
         </div>
@@ -1227,6 +1227,7 @@ export default {
       showImageMenu: false,
       imageMenuPos: { x: 0, y: 0 },
       imageMenuUrl: '',
+      imageMenuType: 'image',
       mdLongPressTimer: null,
       mdLongPressTriggered: false,
       newPost: { content: '', title: '', groupIds: [], isAnonymous: false, type: 'forum', tags: [], foodForm: { dish_name: '', canteen: '', window: '' }, hotForm: { title: '', location: '' }, pollForm: { title: '', options: ['', ''], allowMultiple: false, maxChoices: 1 }, surveyForm: { title: '', questions: [{ question: '', type: 'text', options: [] }] } },
@@ -1276,9 +1277,21 @@ export default {
       return this.$store.state.auth.user;
     },
     // 当前长按菜单的图片是否可转存到云盘（仅本站图片）
-    canSaveMenuImage: function() {
+    canSaveMenuMedia: function() {
       var url = this.imageMenuUrl || '';
       return url.indexOf('/api/cloud/files/') === 0 || url.indexOf('/resources/') === 0 || url.indexOf('/api/photos/') === 0;
+    },
+    menuMediaLabel: function() {
+      var t = this.imageMenuType;
+      if (t === 'video') return '查看视频';
+      if (t === 'audio') return '查看音频';
+      return '查看图片';
+    },
+    menuMediaIcon: function() {
+      var t = this.imageMenuType;
+      if (t === 'video') return 'fa-video';
+      if (t === 'audio') return 'fa-music';
+      return 'fa-image';
     },
     canViewAnonymous: function() {
       var user = this.$store.state.auth.user;
@@ -1472,7 +1485,7 @@ export default {
       }
       self.mdLongPressTriggered = false;
       self.mdLongPressTimer = setTimeout(function() {
-        // 长按：显示图片菜单
+        // 长按：显示媒体菜单
         self.mdLongPressTriggered = true;
         var x = touch.clientX;
         var y = touch.clientY;
@@ -1481,6 +1494,7 @@ export default {
         if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
         if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 8;
         self.imageMenuUrl = url;
+        self.imageMenuType = mediaType;
         self.imageMenuPos = { x: x, y: y };
         self.showImageMenu = true;
       }, 600);
@@ -1527,17 +1541,18 @@ export default {
     },
     saveMenuImageToCloud: function() {
       var self = this;
-      var url = this.imageMenuUrl;
+      var url = self.imageMenuUrl;
       if (!url) return;
+      var typeLabel = self.imageMenuType === 'video' ? '视频' : (self.imageMenuType === 'audio' ? '音频' : '图片');
       self.closeImageMenu();
       api.post('/cloud/save-from-url', { url: url }).then(function(res) {
         if (res.data.code === 200) {
-          self.$store.commit('toast/SHOW_TOAST', { message: '图片已转存到云盘', type: 'success' });
+          self.$store.commit('toast/SHOW_TOAST', { message: typeLabel + '已转存到云盘', type: 'success' });
         } else {
           self.$store.commit('toast/SHOW_TOAST', { message: res.data.message || '转存失败', type: 'error' });
         }
       }).catch(function(err) {
-        console.error('转存图片失败:', err);
+        console.error('转存' + typeLabel + '失败:', err);
         self.$store.commit('toast/SHOW_TOAST', { message: '转存失败，请重试', type: 'error' });
       });
     },

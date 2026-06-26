@@ -34,7 +34,7 @@
           <div class="dc-slider-group"><label class="dc-slider-label">透明</label><input type="range" min="5" max="100" v-model.number="opacity" class="dc-slider" /><span class="dc-slider-value">{{ Math.round(opacity) }}%</span></div>
           <template v-if="isShapeTool"><div class="dc-opt-sep"></div><button class="dc-opt-btn" :class="{ active: fillShape }" @click="fillShape = !fillShape"><i class="fa-solid" :class="fillShape ? 'fa-fill-drip' : 'fa-fill'"></i><span>{{ fillShape ? '填充' : '描边' }}</span></button></template>
           <div class="dc-opt-spacer"></div>
-          <button class="dc-opt-btn" @click="clearLayer"><i class="fa-solid fa-trash-can"></i><span>清除图层</span></button>
+          <button class="dc-opt-btn" @click="clearLayer"><i class="fa-solid fa-trash-can"></i><span>清空画布</span></button>
           <button class="btn-secondary btn-sm" @click="$emit('close')">退出</button>
           <button class="btn-primary btn-sm" @click="saveAndClose">保存</button>
         </div>
@@ -42,30 +42,13 @@
         <!-- 画布工作区 -->
         <div class="dc-workspace" ref="workspace" @wheel.prevent="onWheel" @dblclick="fitToWindow">
           <div class="dc-layers-container" ref="layersContainer" :style="layersContainerStyle">
-            <canvas v-for="(layer, idx) in layers" :key="layer.id" :ref="'layer_' + idx" class="dc-layer" :style="{ zIndex: idx, opacity: layer.visible ? 1 : 0, pointerEvents: activeLayerIdx === idx ? 'auto' : 'none' }" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseUp" @touchstart.prevent="onTouchStart" @touchmove.prevent="onTouchMove" @touchend.prevent="onTouchEnd"></canvas>
-            <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: layers.length, pointerEvents: 'none' }"></canvas>
-            <canvas ref="gridOverlay" class="dc-layer dc-grid-overlay" :style="{ zIndex: layers.length + 1, pointerEvents: 'none', opacity: showGrid ? 1 : 0 }"></canvas>
-            <canvas v-if="showGuides" ref="guidesOverlay" class="dc-layer dc-guides-overlay" :style="{ zIndex: layers.length + 2, pointerEvents: 'none' }"></canvas>
+            <canvas ref="mainCanvas" class="dc-layer" :style="{ zIndex: 0 }" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseUp" @touchstart.prevent="onTouchStart" @touchmove.prevent="onTouchMove" @touchend.prevent="onTouchEnd"></canvas>
+            <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: 1, pointerEvents: 'none' }"></canvas>
+            <canvas ref="gridOverlay" class="dc-layer dc-grid-overlay" :style="{ zIndex: 2, pointerEvents: 'none', opacity: showGrid ? 1 : 0 }"></canvas>
+            <canvas v-if="showGuides" ref="guidesOverlay" class="dc-layer dc-guides-overlay" :style="{ zIndex: 3, pointerEvents: 'none' }"></canvas>
             <div v-if="textInput.visible" class="dc-text-input-wrap" :style="{ left: textInput.x + 'px', top: textInput.y + 'px' }"><input ref="textInputEl" v-model="textInput.text" class="dc-text-input" :style="{ fontSize: Math.max(14, lineWidth * 3) + 'px', color: color }" @keydown.enter="commitText" @keydown.escape="cancelText" placeholder="输入文字后回车确认..." /></div>
           </div>
           <div class="dc-minimap" ref="minimap"><canvas ref="minimapCanvas" class="dc-minimap-canvas" @click="onMinimapClick"></canvas><div class="dc-minimap-viewport" :style="minimapViewportStyle"></div></div>
-        </div>
-
-        <!-- 图层管理栏 -->
-        <div class="dc-layers-bar">
-          <button class="dc-layer-btn" @click="addLayer" title="添加图层"><i class="fa-solid fa-plus"></i></button>
-          <div class="dc-layer-list">
-            <div v-for="(layer, idx) in layers" :key="layer.id" class="dc-layer-item" :class="{ active: activeLayerIdx === idx }" @click="activeLayerIdx = idx">
-              <button class="dc-layer-vis-btn" @click.stop="toggleLayerVisibility(idx)" :title="layer.visible ? '隐藏' : '显示'"><i class="fa-solid" :class="layer.visible ? 'fa-eye' : 'fa-eye-slash'"></i></button>
-              <span class="dc-layer-name">{{ layer.name }}</span>
-              <select v-model="layer.blendMode" class="dc-layer-blend" @click.stop title="混合模式"><option value="normal">正常</option><option value="multiply">正片叠底</option><option value="screen">滤色</option><option value="overlay">叠加</option></select>
-              <button class="dc-layer-del-btn" @click.stop="removeLayer(idx)" v-if="layers.length > 1" title="删除图层"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-          </div>
-          <div class="dc-layer-reorder">
-            <button class="dc-layer-reorder-btn" @click="moveLayerUp" :disabled="activeLayerIdx <= 0"><i class="fa-solid fa-chevron-up"></i></button>
-            <button class="dc-layer-reorder-btn" @click="moveLayerDown" :disabled="activeLayerIdx >= layers.length - 1"><i class="fa-solid fa-chevron-down"></i></button>
-          </div>
         </div>
 
         <!-- 导入图片变换 -->
@@ -94,8 +77,8 @@
       </div>
       <div class="dc-workspace" ref="workspace" @dblclick="fitToWindow">
         <div class="dc-layers-container" ref="layersContainer" :style="layersContainerStyle">
-          <canvas v-for="(layer, idx) in layers" :key="layer.id" :ref="'layer_' + idx" class="dc-layer" :style="{ zIndex: idx, opacity: layer.visible ? 1 : 0, pointerEvents: activeLayerIdx === idx && annotating ? 'auto' : 'none' }" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseUp" @touchstart.prevent="onTouchStart" @touchmove.prevent="onTouchMove" @touchend.prevent="onTouchEnd"></canvas>
-          <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: layers.length, pointerEvents: 'none' }"></canvas>
+          <canvas ref="mainCanvas" class="dc-layer" :style="{ zIndex: 0, pointerEvents: annotating ? 'auto' : 'none' }" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseUp" @touchstart.prevent="onTouchStart" @touchmove.prevent="onTouchMove" @touchend.prevent="onTouchEnd"></canvas>
+          <canvas ref="previewOverlay" class="dc-layer dc-preview-overlay" :style="{ zIndex: 1, pointerEvents: 'none' }"></canvas>
           <div v-if="textInput.visible" class="dc-text-input-wrap" :style="{ left: textInput.x + 'px', top: textInput.y + 'px' }"><input ref="textInputEl" v-model="textInput.text" class="dc-text-input" :style="{ fontSize: Math.max(14, lineWidth * 3) + 'px', color: color }" @keydown.enter="commitText" @keydown.escape="cancelText" placeholder="输入文字后回车确认..." /></div>
         </div>
       </div>
@@ -161,9 +144,9 @@ export default {
       brushType: 'pencil',
       fillShape: false,
 
-      // 图层
-      layers: [],
-      activeLayerIdx: 0,
+      // 画布尺寸（单图层，不再需要 layers 数组）
+      canvasW: 0,
+      canvasH: 0,
 
       // 绘制状态
       drawing: false,
@@ -230,8 +213,9 @@ export default {
       return SHAPE_TOOLS.indexOf(this.activeTool) !== -1;
     },
     layersContainerStyle: function() {
-      var w = this.canvasWidth || 800;
-      var h = this.canvasHeight || 600;
+      // 优先使用 init 时计算的实际画布尺寸
+      var w = this.canvasW || this.canvasWidth || 800;
+      var h = this.canvasH || this.canvasHeight || 600;
       return {
         width: w + 'px',
         height: h + 'px',
@@ -244,8 +228,8 @@ export default {
       if (!ws) return {};
       var vw = ws.offsetWidth;
       var vh = ws.offsetHeight;
-      var cw = this.canvasWidth || 800;
-      var ch = this.canvasHeight || 600;
+      var cw = this.canvasW || this.canvasWidth || 800;
+      var ch = this.canvasH || this.canvasHeight || 600;
       var ratio = this.minimapSize / Math.max(cw, ch);
       return {
         left: (-this.offsetX * this.scale * ratio) + 'px',
@@ -291,8 +275,9 @@ export default {
       w = Math.floor(w);
       h = Math.floor(h);
 
-      self.layers = [];
-      self.activeLayerIdx = 0;
+      // 单图层：仅记录画布尺寸，不再维护 layers 数组
+      self.canvasW = w;
+      self.canvasH = h;
       self.history = [];
       self.historyIdx = -1;
       self.activeTool = 'brush';
@@ -305,46 +290,22 @@ export default {
       self.offsetX = 0;
       self.offsetY = 0;
 
-      if (existingData && existingData.length > 0) {
-        existingData.forEach(function(dataUrl, idx) {
-          self.layers.push({
-            id: generateId(),
-            name: '图层 ' + (idx + 1),
-            visible: true,
-            blendMode: 'normal',
-            width: w,
-            height: h
-          });
-        });
-      } else {
-        self.layers.push({
-          id: generateId(),
-          name: '图层 1',
-          visible: true,
-          blendMode: 'normal',
-          width: w,
-          height: h
-        });
-      }
-
       self.$nextTick(function() {
-        self.layers.forEach(function(layer, idx) {
-          var canvas = self.getLayerCanvas(idx);
-          if (canvas) {
-            canvas.width = w;
-            canvas.height = h;
-            var ctx = canvas.getContext('2d');
-            ctx.fillStyle = self.mode === 'annotation' ? 'rgba(0,0,0,0)' : '#ffffff';
-            ctx.fillRect(0, 0, w, h);
-            if (existingData && existingData[idx]) {
-              var img = new Image();
-              img.onload = (function(c, d) {
-                return function() { c.drawImage(d, 0, 0, w, h); };
-              })(ctx, img);
-              img.src = existingData[idx];
-            }
+        var canvas = self.$refs.mainCanvas;
+        if (canvas) {
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          // full 模式填充白色背景；annotation 模式保持透明
+          ctx.fillStyle = self.mode === 'annotation' ? 'rgba(0,0,0,0)' : '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          // 若有历史数据，绘制到画布上（单图层，取首张）
+          if (existingData && existingData.length > 0 && existingData[0]) {
+            var img = new Image();
+            img.onload = function() { ctx.drawImage(img, 0, 0, w, h); };
+            img.src = existingData[0];
           }
-        });
+        }
         var overlay = self.$refs.previewOverlay;
         if (overlay) {
           overlay.width = w;
@@ -367,15 +328,9 @@ export default {
       });
     },
 
-    // ============ 图层 Canvas 引用 ============
-    getLayerCanvas: function(idx) {
-      var refKey = 'layer_' + idx;
-      var canvasArr = this.$refs[refKey];
-      return canvasArr ? canvasArr[0] : null;
-    },
-
+    // ============ 画布引用 ============
     getActiveCanvas: function() {
-      return this.getLayerCanvas(this.activeLayerIdx);
+      return this.$refs.mainCanvas;
     },
 
     // ============ 坐标转换 ============
@@ -421,8 +376,8 @@ export default {
       if (!ws) return;
       var vw = ws.offsetWidth;
       var vh = ws.offsetHeight;
-      var cw = self.canvasWidth || 800;
-      var ch = self.canvasHeight || 600;
+      var cw = self.canvasW || self.canvasWidth || 800;
+      var ch = self.canvasH || self.canvasHeight || 600;
       var fitScale = Math.min(vw / cw, vh / ch, 1) * 0.9;
       self.scale = fitScale;
       self.offsetX = (vw - cw * fitScale) / 2 / fitScale;
@@ -574,8 +529,16 @@ export default {
       ctx.lineJoin = 'round';
 
       if (self.activeTool === 'eraser') {
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = '#000000';
+        // 按模式区分橡皮擦行为：
+        // - full 模式：canvas 有白色不透明背景，用白色画笔模拟擦除（避免 destination-out 把白底也擦成透明）
+        // - annotation 模式：canvas 透明，用 destination-out 真正擦除像素，让下层笔记内容显示
+        if (self.mode === 'annotation') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.strokeStyle = '#000000';
+        } else {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = '#ffffff';
+        }
         ctx.globalAlpha = 1;
         ctx.lineWidth = self.lineWidth;
       } else if (self.brushType === 'marker') {
@@ -766,81 +729,6 @@ export default {
       self.saveState();
     },
 
-    // ============ 图层管理 ============
-    addLayer: function(name) {
-      var self = this;
-      var w = self.canvasWidth || 800;
-      var h = self.canvasHeight || 600;
-      var newLayer = {
-        id: generateId(),
-        name: name || ('图层 ' + (self.layers.length + 1)),
-        visible: true,
-        blendMode: 'normal',
-        width: w,
-        height: h
-      };
-      self.layers.push(newLayer);
-      self.activeLayerIdx = self.layers.length - 1;
-      self.$nextTick(function() {
-        var canvas = self.getLayerCanvas(self.layers.length - 1);
-        if (canvas) {
-          canvas.width = w;
-          canvas.height = h;
-          var ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, w, h);
-        }
-        var overlay = self.$refs.previewOverlay;
-        if (overlay) {
-          overlay.width = w;
-          overlay.height = h;
-        }
-        self.saveState();
-      });
-    },
-
-    removeLayer: function(idx) {
-      var self = this;
-      if (self.layers.length <= 1) return;
-      self.layers.splice(idx, 1);
-      if (self.activeLayerIdx >= self.layers.length) {
-        self.activeLayerIdx = self.layers.length - 1;
-      } else if (self.activeLayerIdx > idx) {
-        self.activeLayerIdx--;
-      } else if (self.activeLayerIdx === idx) {
-        self.activeLayerIdx = Math.min(idx, self.layers.length - 1);
-      }
-      self.history = [];
-      self.historyIdx = -1;
-      self.$nextTick(function() {
-        self.saveState();
-      });
-    },
-
-    toggleLayerVisibility: function(idx) {
-      this.layers[idx].visible = !this.layers[idx].visible;
-    },
-
-    moveLayerUp: function() {
-      var self = this;
-      var idx = self.activeLayerIdx;
-      if (idx <= 0) return;
-      var temp = self.layers[idx];
-      self.$set(self.layers, idx, self.layers[idx - 1]);
-      self.$set(self.layers, idx - 1, temp);
-      self.activeLayerIdx = idx - 1;
-    },
-
-    moveLayerDown: function() {
-      var self = this;
-      var idx = self.activeLayerIdx;
-      if (idx >= self.layers.length - 1) return;
-      var temp = self.layers[idx];
-      self.$set(self.layers, idx, self.layers[idx + 1]);
-      self.$set(self.layers, idx + 1, temp);
-      self.activeLayerIdx = idx + 1;
-    },
-
     // ============ 网格 ============
     toggleGrid: function() {
       var self = this;
@@ -854,8 +742,8 @@ export default {
       var self = this;
       var overlay = self.$refs.gridOverlay;
       if (!overlay) return;
-      var w = self.canvasWidth || 800;
-      var h = self.canvasHeight || 600;
+      var w = self.canvasW || self.canvasWidth || 800;
+      var h = self.canvasH || self.canvasHeight || 600;
       overlay.width = w;
       overlay.height = h;
       var ctx = overlay.getContext('2d');
@@ -883,8 +771,8 @@ export default {
       var self = this;
       var overlay = self.$refs.guidesOverlay;
       if (!overlay) return;
-      var w = self.canvasWidth || 800;
-      var h = self.canvasHeight || 600;
+      var w = self.canvasW || self.canvasWidth || 800;
+      var h = self.canvasH || self.canvasHeight || 600;
       overlay.width = w;
       overlay.height = h;
       var ctx = overlay.getContext('2d');
@@ -1027,22 +915,19 @@ export default {
         var mc = self.$refs.minimapCanvas;
         if (!mc) return;
         var ms = self.minimapSize;
-        var cw = self.canvasWidth || 800;
-        var ch = self.canvasHeight || 600;
+        var cw = self.canvasW || self.canvasWidth || 800;
+        var ch = self.canvasH || self.canvasHeight || 600;
         var ratio = ms / Math.max(cw, ch);
         mc.width = cw * ratio;
         mc.height = ch * ratio;
         var ctx = mc.getContext('2d');
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, 0, mc.width, mc.height);
-        // 绘制所有可见图层缩略图
-        self.layers.forEach(function(layer, idx) {
-          if (!layer.visible) return;
-          var canvas = self.getLayerCanvas(idx);
-          if (canvas) {
-            ctx.drawImage(canvas, 0, 0, mc.width, mc.height);
-          }
-        });
+        // 单图层：直接绘制主画布缩略图
+        var canvas = self.getActiveCanvas();
+        if (canvas) {
+          ctx.drawImage(canvas, 0, 0, mc.width, mc.height);
+        }
         ctx.strokeStyle = '#ccc';
         ctx.lineWidth = 1;
         ctx.strokeRect(0, 0, mc.width, mc.height);
@@ -1054,8 +939,8 @@ export default {
       var mc = self.$refs.minimapCanvas;
       if (!mc) return;
       var rect = mc.getBoundingClientRect();
-      var cw = self.canvasWidth || 800;
-      var ch = self.canvasHeight || 600;
+      var cw = self.canvasW || self.canvasWidth || 800;
+      var ch = self.canvasH || self.canvasHeight || 600;
       var ratio = self.minimapSize / Math.max(cw, ch);
       var clickX = (e.clientX - rect.left) / ratio;
       var clickY = (e.clientY - rect.top) / ratio;
@@ -1067,15 +952,10 @@ export default {
 
     // ============ 保存/关闭 ============
     getData: function() {
-      var self = this;
-      var canvasData = [];
-      self.layers.forEach(function(layer, idx) {
-        var canvas = self.getLayerCanvas(idx);
-        if (canvas) {
-          canvasData.push(canvas.toDataURL('image/png'));
-        }
-      });
-      return canvasData;
+      // 单图层：返回单元素数组，保持与 Notes.vue canvasData 数组存储格式兼容
+      var canvas = this.getActiveCanvas();
+      if (!canvas) return [];
+      return [canvas.toDataURL('image/png')];
     },
 
     saveAndClose: function() {
