@@ -174,7 +174,8 @@ export default {
       longPressTimer: null,
       longPressFired: false,
       longPressMediaUrl: null,
-      longPressMediaType: null
+      longPressMediaType: null,
+      audioPlayers: {} // 语音条 Audio 对象池，key=媒体URL
     };
   },
   computed: {
@@ -278,6 +279,11 @@ export default {
   },
   mounted: function() {
     document.addEventListener('click', this.closeContextMenu);
+    this.$nextTick(this.initVoiceBars);
+  },
+  updated: function() {
+    // v-html 重新渲染后，初始化新增的语音条
+    this.$nextTick(this.initVoiceBars);
   },
   beforeDestroy: function() {
     document.removeEventListener('click', this.closeContextMenu);
@@ -285,6 +291,7 @@ export default {
       clearTimeout(this.longPressTimer);
       this.longPressTimer = null;
     }
+    this.cleanupAudioPlayers();
   },
   methods: {
     onContentClick: function(e) {
@@ -460,9 +467,19 @@ export default {
             '<div class="msg-media-play"><i class="fa-solid fa-play"></i></div>' +
             '</div>';
         } else if (item.type === 'audio') {
-          mediaHtml = '<div class="msg-media-wrapper msg-audio-wrapper">' +
-            '<audio class="msg-audio msg-media" data-media-url="' + escapedUrl + '" data-media-type="audio" src="' + escapedUrl + '" preload="metadata" controls></audio>' +
-            '</div>';
+          // 微信式语音条 UI（播放按钮 + 波形 + 时长 + 进度）
+          var voiceBars = '';
+          for (var b = 0; b < 8; b++) {
+            voiceBars += '<span></span>';
+          }
+          mediaHtml = '<div class="msg-voice-bar msg-media" data-media-url="' + escapedUrl + '" data-media-type="audio" data-voice-init="0">' +
+            '<div class="voice-play-btn"><i class="fa-solid fa-play"></i></div>' +
+            '<div class="voice-wave">' +
+              '<div class="voice-wave-bars">' + voiceBars + '</div>' +
+              '<div class="voice-progress"></div>' +
+            '</div>' +
+            '<div class="voice-duration">--"</div>' +
+          '</div>';
         }
         html = html.replace(placeholder, mediaHtml);
       }
