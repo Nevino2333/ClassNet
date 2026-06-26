@@ -637,6 +637,28 @@
             <span>回复 @{{ replyToUser }}</span>
             <button class="reply-clear" @click="clearReplyTo"><i class="fa-solid fa-xmark"></i></button>
           </div>
+          <div class="comment-toolbar">
+            <button class="comment-tool-btn" @click="commentEmojiOpen = !commentEmojiOpen" title="表情">
+              <i class="fa-regular fa-face-smile"></i>
+            </button>
+            <button class="comment-tool-btn" @click="commentCloudTarget = 'comment'; showCloudPicker = true" title="云盘文件">
+              <i class="fa-solid fa-cloud"></i>
+            </button>
+            <button class="comment-tool-btn" @click="openRecordModal('audio', 'comment')" title="录音">
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+            <button class="comment-tool-btn" @click="openRecordModal('video', 'comment')" title="录像">
+              <i class="fa-solid fa-video"></i>
+            </button>
+          </div>
+          <div v-if="commentEmojiOpen" class="emoji-picker comment-emoji-picker">
+            <button
+              v-for="emoji in emojiList"
+              :key="emoji"
+              class="emoji-btn"
+              @click="insertCommentEmoji(emoji)"
+            >{{ emoji }}</button>
+          </div>
           <div class="full-detail-input-wrap">
             <input
               class="detail-comment-input"
@@ -833,8 +855,14 @@
               <button class="toolbar-btn" :class="{ active: showEmojiPicker }" @click="toggleEmojiPicker" title="表情">
                 <i class="fa-regular fa-face-smile"></i>
               </button>
-              <button class="toolbar-btn" @click="showCloudPicker = true" title="云盘图片">
+              <button class="toolbar-btn" @click="commentCloudTarget = 'post'; showCloudPicker = true" title="云盘文件">
                 <i class="fa-solid fa-cloud"></i>
+              </button>
+              <button class="toolbar-btn" @click="openRecordModal('audio', 'post')" title="录音">
+                <i class="fa-solid fa-microphone"></i>
+              </button>
+              <button class="toolbar-btn" @click="openRecordModal('video', 'post')" title="录像">
+                <i class="fa-solid fa-video"></i>
               </button>
               <div class="char-counter" :class="{ over: isContentOverLimit }">{{ contentCharCount }}/{{ maxContentLength }}</div>
             </div>
@@ -1048,6 +1076,14 @@
     <!-- Image Preview -->
     <ImagePreview :visible="showImagePreview" :image-url="imagePreviewUrl" :media-type="mediaPreviewType" @close="closeImagePreview" />
 
+    <!-- Record Modal -->
+    <RecordModal
+      :visible="showRecordModal"
+      :mode="recordMode"
+      @close="showRecordModal = false"
+      @uploaded="onRecordUploaded"
+    />
+
     <!-- Image long-press menu -->
     <transition name="fade-quick">
       <div v-if="showImageMenu" class="image-menu-overlay" @click="closeImageMenu">
@@ -1071,6 +1107,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue';
 import CloudImagePicker from '@/components/CloudImagePicker.vue';
 import ImagePreview from '@/components/ImagePreview.vue';
+import RecordModal from '@/components/RecordModal.vue';
 import api from '@/utils/api';
 import helpers from '@/utils/helpers';
 import wsManager from '@/utils/websocket';
@@ -1080,7 +1117,9 @@ import hljs from 'highlight.js';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github-dark.min.css';
+import 'video.js/dist/video-js.css';
 import LatexRenderer from '@/utils/latex-renderer';
+import { getMediaTypeByName } from '@/utils/media-recorder.js';
 
 var TAG_COLORS = [
   '#007AFF', '#34C759', '#FF9500', '#AF52DE', '#FF3B30',
@@ -1147,13 +1186,13 @@ customRenderer.link = function(href, title, text) {
   }
   if (mediaType === 'video') {
     return '<div class="md-media-wrapper md-video-wrapper">' +
-      '<video class="md-video md-media" data-media-url="' + safeUrl + '" data-media-type="video" src="' + safeUrl + '" preload="metadata" controls></video>' +
+      '<video class="video-js md-video md-media" data-media-url="' + safeUrl + '" data-media-type="video" src="' + safeUrl + '" preload="metadata" controls></video>' +
       '<div class="md-media-hint">点击视频可全屏预览</div>' +
       '</div>';
   }
   if (mediaType === 'audio') {
     return '<div class="md-media-wrapper md-audio-wrapper">' +
-      '<audio class="md-audio md-media" data-media-url="' + safeUrl + '" data-media-type="audio" src="' + safeUrl + '" preload="metadata" controls></audio>' +
+      '<audio class="video-js md-audio md-media" data-media-url="' + safeUrl + '" data-media-type="audio" src="' + safeUrl + '" preload="metadata" controls></audio>' +
       '</div>';
   }
   // 普通链接：使用默认渲染
@@ -1172,7 +1211,7 @@ marked.setOptions({
 
 export default {
   name: 'Community',
-  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker, ImagePreview: ImagePreview },
+  components: { AppNavBar: AppNavBar, UserAvatar: UserAvatar, ConfirmDialog: ConfirmDialog, LoadingSkeleton: LoadingSkeleton, CloudImagePicker: CloudImagePicker, ImagePreview: ImagePreview, RecordModal: RecordModal },
   data: function() {
     return {
       tabs: [
@@ -1197,6 +1236,13 @@ export default {
       showPostPreview: false,
       showEmojiPicker: false,
       showCloudPicker: false,
+      commentCloudTarget: 'post', // 云盘选择目标：'post'(发帖) / 'comment'(评论)
+      // 录音/录像弹窗
+      showRecordModal: false,
+      recordMode: 'audio', // 'audio' / 'video'
+      recordTarget: 'post', // 'post'(发帖) / 'comment'(评论)
+      // 评论工具栏
+      commentEmojiOpen: false,
       // 图片预览
       showImagePreview: false,
       imagePreviewUrl: '',
@@ -1851,9 +1897,38 @@ export default {
       this.newPost.content = this.newPost.content + emoji;
     },
     onCloudImageSelect: function(file) {
-      // 插入 Markdown 格式的云盘图片
-      this.newPost.content += '![' + file.name + '](/api/cloud/files/' + encodeURIComponent(file.name) + ')';
+      // 按类型分支插入：图片用 ![]()，音视频用 []()（customRenderer.link 渲染播放器）
+      var type = getMediaTypeByName(file.name);
+      var url = '/api/cloud/files/' + encodeURIComponent(file.name);
+      var md = type === 'image' ? '![' + file.name + '](' + url + ')' : '[' + file.name + '](' + url + ')';
+      if (this.commentCloudTarget === 'comment') {
+        this.commentText += md;
+      } else {
+        this.newPost.content += md;
+      }
       this.showCloudPicker = false;
+      this.commentCloudTarget = 'post'; // 重置目标
+    },
+    // 打开录音/录像弹窗
+    openRecordModal: function(mode, target) {
+      this.recordMode = mode;
+      this.recordTarget = target;
+      this.showRecordModal = true;
+    },
+    // 录音/录像上传完成回调
+    onRecordUploaded: function(data) {
+      var md = '[' + data.name + '](' + data.url + ')';
+      if (this.recordTarget === 'comment') {
+        this.commentText += md;
+      } else {
+        this.newPost.content += md;
+      }
+      this.showRecordModal = false;
+      this.$store.commit('toast/SHOW_TOAST', { message: data.type === 'audio' ? '录音已添加' : '视频已添加', type: 'success' });
+    },
+    // 评论插入表情
+    insertCommentEmoji: function(emoji) {
+      this.commentText += emoji;
     },
     toggleEmojiPicker: function() {
       this.showEmojiPicker = !this.showEmojiPicker;
@@ -2877,6 +2952,21 @@ export default {
 .emoji-btn { width: 44px; height: 44px; border: none; background: transparent; font-size: var(--font-size-subheadline); cursor: pointer; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 .emoji-btn:hover { background: var(--bg-color); }
 .emoji-btn:active { transform: scale(0.92); opacity: 0.7; }
+
+/* 评论工具栏 */
+.comment-toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 0; margin-bottom: 4px; }
+.comment-tool-btn { width: 36px; height: 36px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+.comment-tool-btn:active { transform: scale(0.92); opacity: 0.7; }
+.comment-emoji-picker { max-height: 120px; }
+
+/* video.js CSS 覆盖（仅样式，不初始化 JS） */
+.md-video-wrapper ::v-deep .video-js { width: 100%; max-width: 480px; border-radius: var(--radius-md); overflow: hidden; }
+.md-video-wrapper ::v-deep .vjs-big-play-button { display: none !important; }
+.md-audio-wrapper ::v-deep .video-js { width: 100%; max-width: 320px; height: 40px; border-radius: var(--radius-sm); overflow: hidden; }
+.md-audio-wrapper ::v-deep .vjs-big-play-button { display: none !important; }
+.md-audio-wrapper ::v-deep .vjs-control-bar { font-size: 10px; }
+.md-audio-wrapper ::v-deep .vjs-volume-panel { min-width: 40px; }
+.md-audio-wrapper ::v-deep .vjs-progress-control { margin: 0 4px; }
 
 /* 预览卡片 */
 .preview-card { padding: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--card-bg); }
