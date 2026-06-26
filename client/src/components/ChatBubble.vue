@@ -1175,14 +1175,14 @@ export default {
 }
 
 /* 视频/音频内联播放器 */
-.msg-media-wrapper {
+.chat-bubble >>> .msg-media-wrapper {
   position: relative;
   display: inline-block;
   max-width: 100%;
   cursor: pointer;
 }
 
-.msg-video-wrapper {
+.chat-bubble >>> .msg-video-wrapper {
   width: 280px;
   max-width: 100%;
   border-radius: var(--radius-md);
@@ -1190,7 +1190,7 @@ export default {
   background: #000;
 }
 
-.msg-video {
+.chat-bubble >>> .msg-video {
   display: block;
   width: 100%;
   max-height: 200px;
@@ -1199,7 +1199,7 @@ export default {
   -webkit-tap-highlight-color: transparent;
 }
 
-.msg-media-play {
+.chat-bubble >>> .msg-media-play {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1214,7 +1214,7 @@ export default {
   pointer-events: none;
 }
 
-.msg-media-play i {
+.chat-bubble >>> .msg-media-play i {
   color: #fff;
   font-size: 14px;
   margin-left: 2px;
